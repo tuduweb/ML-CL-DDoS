@@ -6,8 +6,9 @@ import pandas as pd
 import torch
 import torch.utils.data
 
-TRAINDATA_DIR = 'N:\dataset\media_competetions_manual-uploaded-datasets_train.tar\media_competetions_manual-uploaded-datasets_train\train/'
-TESTDATA_PATH = './test/testing-X.pkl'
+#斜杆一定要是/左斜杠
+TRAINDATA_DIR = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/train/'
+TESTDATA_PATH = './data/test/testing-X.pkl'
 ATTACK_TYPES = {
     'snmp': 0,
     'portmap': 1,
@@ -62,13 +63,22 @@ class UserRoundData(object):
 
         print('Load User Data: ', os.path.basename(fpath))
         data = pd.read_csv(fpath, skipinitialspace=True, low_memory=False)
-        x = extract_features(data)
+
+        print(data) #has label
+        x = extract_features(data)  #提取
+
+        # for t in data.iloc[:, -1]:  # -1:label
+        #     print(t)
+        #     print(self.attack_types[t.split('_')[-1].replace('-', '').lower()]) #攻击种类
+
         y = np.array([
             self.attack_types[t.split('_')[-1].replace('-', '').lower()]
-            for t in data.iloc[:, -1]
-        ])
+            for t in data.iloc[:, -1]   #-1:label
+        ])#y中的数据为攻击种类的ID
+
 
         x = x.to_numpy().astype(np.float32)
+        y = y.astype(np.longlong)
         x[x == np.inf] = 1.
         x[np.isnan(x)] = 0.
         return (
@@ -93,7 +103,7 @@ class UserRoundData(object):
                 y,
             ))
 
-        self.n_users = len(_user_datasets)
+        self.n_users = len(_user_datasets)  #孤岛数量 slave
 
     def round_data(self, user_idx, n_round, n_round_samples=-1):
         """Generate data for user of user_idx at round n_round.

@@ -8,7 +8,7 @@ def user_round_train(X, Y, model, device, debug=False):
     data = CompDataset(X=X, Y=Y)
     train_loader = torch.utils.data.DataLoader(
         data,
-        batch_size=320,
+        batch_size=320,#一次训练所选取的样本数。
         shuffle=True,
     )
 

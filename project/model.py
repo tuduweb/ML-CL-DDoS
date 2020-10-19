@@ -72,11 +72,11 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
     def setUp(self):
         self.seed = 0
-        self.use_cuda = False
+        self.use_cuda = False #os.getenv("LOCAL_RUN") is not None #False
         self.batch_size = 64
         self.test_batch_size = 1000
         self.lr = 0.001
-        self.n_max_rounds = 10000
+        self.n_max_rounds = 10000   #训练次数
         self.log_interval = 10
         self.n_round_samples = 1600
         self.testbase = self.TEST_BASE_DIR
@@ -116,13 +116,14 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
             path = self.ps.get_latest_model()
             start = datetime.now()
             for u in range(0, self.n_users):
-                model = FLModel()
-                model.load_state_dict(torch.load(path))
-                model = model.to(device)
+                model = FLModel()   #在 learning_model 中定义的模型
+                model.load_state_dict(torch.load(path)) #将模型参数load进模型
+                model = model.to(device)    #这代表将模型加载到指定设备上。
                 x, y = self.urd.round_data(
                     user_idx=u,
                     n_round=r,
-                    n_round_samples=self.n_round_samples)
+                    n_round_samples=self.n_round_samples)#Generate data
+                #X,Y:数据;model:模型;device:运行设备
                 grads = user_round_train(X=x, Y=y, model=model, device=device)
                 self.ps.receive_grads_info(grads=grads)
 
@@ -151,7 +152,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
             fout.writelines(os.linesep.join([str(n) for n in predition]))
 
     def save_testdata_prediction(self, model, device):
-        loader = get_test_loader(batch_size=1000)
+        loader = get_test_loader(batch_size=1000)   #测试集
         prediction = []
         with torch.no_grad():
             for data in loader:
@@ -189,6 +190,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
 
 def suite():
+    #print(os.getenv("LOCAL_RUN") is not None)
     suite = unittest.TestSuite()
     suite.addTest(FedAveragingGradsTestSuit('test_federated_averaging'))
     return suite
