@@ -90,6 +90,8 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         if not os.path.exists(self.init_model_path):
             torch.save(FLModel().state_dict(), self.init_model_path)
+            ### state_dict 是一个简单的python的字典对象,将每一层与它的对应参数建立映射关系
+            ### torch.save(model, PATH) #保存模型的状态
 
         self.ps = ParameterServer(init_model_path=self.init_model_path,
                                   testworkdir=self.testworkdir)
@@ -113,7 +115,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         training_start = datetime.now()
         model = None
         for r in range(1, self.n_max_rounds + 1):
-            path = self.ps.get_latest_model()
+            path = self.ps.get_latest_model()#获取上一次模型"数据?"
             start = datetime.now()
             for u in range(0, self.n_users):
                 model = FLModel()   #在 learning_model 中定义的模型
@@ -125,7 +127,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                     n_round_samples=self.n_round_samples)#Generate data
                 #X,Y:数据;model:模型;device:运行设备
                 grads = user_round_train(X=x, Y=y, model=model, device=device)
-                self.ps.receive_grads_info(grads=grads)
+                self.ps.receive_grads_info(grads=grads) #把计算得到的梯度信息发送到服务器
 
             self.ps.aggregate()
             print('\nRound {} cost: {}, total training cost: {}'.format(
@@ -163,6 +165,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
     def predict(self, model, device, test_loader, prefix=""):
         model.eval()
+        #特别注意的是需要用 model.eval()，让model变成测试模式，这主要是对dropout和batch normalization的操作在训练和测试的时候是不一样的
         test_loss = 0
         correct = 0
         prediction = []
@@ -197,6 +200,7 @@ def suite():
 
 
 def main():
+    #TextTestRunner是来执行测试用例的，其中的run(test)会执行TestSuite/TestCase中的run(result)方法。
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
