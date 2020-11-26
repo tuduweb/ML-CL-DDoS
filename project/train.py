@@ -10,7 +10,7 @@ def user_round_train(X, Y, model, device, debug=False):
     data = CompDataset(X=X, Y=Y)
     train_loader = torch.utils.data.DataLoader(
         data,
-        batch_size=320,
+        batch_size=320,#320
         shuffle=True,
     )
 
@@ -40,7 +40,7 @@ def user_round_train(X, Y, model, device, debug=False):
     for name, param in model.named_parameters():
         #print(name)
         #print(param.grad)
-        grads['named_grads'][name] = param.grad.detach().cpu().numpy()
+        grads['named_grads'][name] = param.grad.detach().cpu().numpy()  #cpu类型
         #print(param.shape)
 
     if debug:
