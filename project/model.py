@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 import shutil
 import unittest
-
+from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from sklearn.metrics import classification_report
 import torch
@@ -71,14 +71,21 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
     TEST_BASE_DIR = '/tmp/'
 
     def setUp(self):
+        if True or (os.getenv('LOCAL_ENV') == 1):
+            self.TEST_BASE_DIR = 'C:/tmp/'
+            print("Hello Local Env User~")
+            self.use_cuda = True
+        else:
+            self.use_cuda = False
+
         self.seed = 0
-        self.use_cuda = False #os.getenv("LOCAL_RUN") is not None #False
+        #self.use_cuda = True
         self.batch_size = 64
         self.test_batch_size = 1000
-        self.lr = 0.001
-        self.n_max_rounds = 10000   #训练次数
+        self.lr = 0.1
+        self.n_max_rounds = 5200
         self.log_interval = 10
-        self.n_round_samples = 1600
+        self.n_round_samples = 1600 #随机抽取的样本数 #df:1600
         self.testbase = self.TEST_BASE_DIR
         self.testworkdir = os.path.join(self.testbase, 'competetion-test')
 
@@ -90,8 +97,6 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         if not os.path.exists(self.init_model_path):
             torch.save(FLModel().state_dict(), self.init_model_path)
-            ### state_dict 是一个简单的python的字典对象,将每一层与它的对应参数建立映射关系
-            ### torch.save(model, PATH) #保存模型的状态
 
         self.ps = ParameterServer(init_model_path=self.init_model_path,
                                   testworkdir=self.testworkdir)
@@ -115,19 +120,19 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         training_start = datetime.now()
         model = None
         for r in range(1, self.n_max_rounds + 1):
-            path = self.ps.get_latest_model()#获取上一次模型"数据?"
+            path = self.ps.get_latest_model()
             start = datetime.now()
             for u in range(0, self.n_users):
-                model = FLModel()   #在 learning_model 中定义的模型
-                model.load_state_dict(torch.load(path)) #将模型参数load进模型
-                model = model.to(device)    #这代表将模型加载到指定设备上。
+                model = FLModel()
+                model.load_state_dict(torch.load(path))
+                model = model.to(device)
                 x, y = self.urd.round_data(
                     user_idx=u,
                     n_round=r,
-                    n_round_samples=self.n_round_samples)#Generate data
-                #X,Y:数据;model:模型;device:运行设备
+                    n_round_samples=self.n_round_samples)
                 grads = user_round_train(X=x, Y=y, model=model, device=device)
-                self.ps.receive_grads_info(grads=grads) #把计算得到的梯度信息发送到服务器
+                # 参数服务器接受梯度.没有带u信息
+                self.ps.receive_grads_info(grads=grads)
 
             self.ps.aggregate()
             print('\nRound {} cost: {}, total training cost: {}'.format(
@@ -140,8 +145,9 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                 self.predict(model,
                              device,
                              self.urd.uniform_random_loader(self.N_VALIDATION),
-                             prefix="Train")
-                self.save_testdata_prediction(model=model, device=device)
+                             prefix="Train")# 用的train数据
+                # 预测 无标签的数据,并保存到result.txt
+                self.save_testdata_prediction(model=model, device=device)#用的pkl数据
 
         if model is not None:
             self.save_testdata_prediction(model=model, device=device)
@@ -154,7 +160,8 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
             fout.writelines(os.linesep.join([str(n) for n in predition]))
 
     def save_testdata_prediction(self, model, device):
-        loader = get_test_loader(batch_size=1000)   #测试集
+        # 测试的时候batch_size 因为没有学习过程 那么越大越好？
+        loader = get_test_loader(batch_size=1000)
         prediction = []
         with torch.no_grad():
             for data in loader:
@@ -162,10 +169,9 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                 prediction.extend(pred.reshape(-1).tolist())
 
         self.save_prediction(prediction)
-
+    # 使用随机的训练数据来测试当前模型准确率
     def predict(self, model, device, test_loader, prefix=""):
         model.eval()
-        #特别注意的是需要用 model.eval()，让model变成测试模式，这主要是对dropout和batch normalization的操作在训练和测试的时候是不一样的
         test_loss = 0
         correct = 0
         prediction = []
@@ -193,14 +199,12 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
 
 def suite():
-    #print(os.getenv("LOCAL_RUN") is not None)
     suite = unittest.TestSuite()
     suite.addTest(FedAveragingGradsTestSuit('test_federated_averaging'))
     return suite
 
 
 def main():
-    #TextTestRunner是来执行测试用例的，其中的run(test)会执行TestSuite/TestCase中的run(result)方法。
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
