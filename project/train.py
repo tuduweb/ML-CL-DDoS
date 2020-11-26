@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
-
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.autograd import Variable
 from preprocess import CompDataset
 
 
@@ -8,7 +10,7 @@ def user_round_train(X, Y, model, device, debug=False):
     data = CompDataset(X=X, Y=Y)
     train_loader = torch.utils.data.DataLoader(
         data,
-        batch_size=320,#一次训练所选取的样本数。
+        batch_size=320,
         shuffle=True,
     )
 
@@ -36,7 +38,10 @@ def user_round_train(X, Y, model, device, debug=False):
 
     grads = {'n_samples': data.shape[0], 'named_grads': {}}
     for name, param in model.named_parameters():
+        #print(name)
+        #print(param.grad)
         grads['named_grads'][name] = param.grad.detach().cpu().numpy()
+        #print(param.shape)
 
     if debug:
         print('Training Loss: {:<10.2f}, accuracy: {:<8.2f}'.format(

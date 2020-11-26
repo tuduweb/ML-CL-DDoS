@@ -35,7 +35,7 @@ class PytorchModel(ModelBase):
                  torch,
                  model_class,
                  init_model_path: str = '',
-                 lr: float = 0.01,
+                 lr: float = 0.001,
                  optim_name: str = 'Adam',
                  cuda: bool = False):
         """Pytorch 封装.
@@ -58,7 +58,7 @@ class PytorchModel(ModelBase):
 
         self._init_params()
 
-    def _init_params(self):
+    def _init_params(self): 
         self.model = self.model_class()
         if self.init_model_path:
             self.model.load_state_dict(self.torch.load(self.init_model_path))
@@ -68,11 +68,13 @@ class PytorchModel(ModelBase):
 
         self.optimizer = getattr(self.torch.optim,
                                  self.optim_name)(self.model.parameters(),
-                                                  lr=self.lr)
+                                                  lr=self.lr,weight_decay=0.01)
 
     def update_grads(self, grads):
         self.optimizer.zero_grad()
 
+        if self.cuda:
+            self.model.to("cpu") #梯度更新过程需要放在CPU中进行 https://discuss.pytorch.org/t/runtimeerror-assigned-grad-has-data-of-a-different-type/95373
         for k, v in self.model.named_parameters():
             v.grad = grads[k].type(v.dtype)
 

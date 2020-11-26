@@ -1,23 +1,53 @@
 import torch.nn as nn
+import torch
 import torch.nn.functional as F
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.autograd import Variable
 
 
 class FLModel(nn.Module):
     def __init__(self):
         super().__init__()
-        #PyTorch的nn.Linear（）是用于设置网络中的全连接层的，需要注意的是全连接层的输入与输出都是二维张量，一般形状为[batch_size, size]，不同于卷积层要求输入输出是四维张量。
-        #张量是一个可用来表示在一些矢量、标量和其他张量之间的线性关系的多线性函数
-        self.fc1 = nn.Linear(79, 256)
-        self.fc5 = nn.Linear(256, 14)
-        #in_features指的是输入的二维张量的大小，即输入的[batch_size, size]中的size。
-        #out_features指的是输出的二维张量的大小，即输出的二维张量的形状为[batch_size，output_size]，当然，它也代表了该全连接层的神经元个数。
+        # self.conv1 = nn.Conv2d(in_channels=1,out_channels=16,kernel_size=3,stride=1,padding=1)
+        self.conv1 = nn.Conv1d(1, 16, 2)
+        self.maxpool1 = nn.MaxPool1d(2)
+        self.conv2 = nn.Conv1d(16, 16, 2)
+        self.maxpool2 = nn.MaxPool1d(2)
+        # self.Flatten = nn.Flatten()
+        self.l1 = nn.Linear(304, 512)
+        # self.dropout = nn.Dropout(0.5)
+        # self.dropout = nn.Dropout(0.2)
+        self.l3 = nn.Linear(512, 256)
+        self.l4 = nn.Linear(256, 128)
+        self.l5 = nn.Linear(128, 14)
+        # self.re = torch.reshape()
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = F.relu(x)
-        #relu:线性整流函数（Rectified Linear Unit, ReLU），又称修正线性单元，是一种人工神经网络中常用的激活函数（activation function），通常指代以斜坡函数及其变种为代表的非线性函数。
-        x = self.fc5(x)
-        output = F.log_softmax(x, dim=1)
-        #log_softmax:输出层的激励函数.把一组评分值转换成一组概率,总概率和为1,保持相对大小关系
+        # x = torch.reshape(x, (320, 1, 79, 1))
+        x = x.unsqueeze(1)
+        # print(x.shape)
+        x = F.relu(self.conv1(x))
+        # print("卷积后..............")
+        # print(x.shape)
+        x = self.maxpool1(x)
+        # print("池化后..............")
+        # print(x.shape)
+        x = F.relu(self.conv2(x))
+        x = self.maxpool2(x)
+        x = x.view(x.size()[0], -1)
+        # print("flatten.................")
+        # print(x.shape)
+
+        # x = self.l1(x)
+        # x = F.dropout(x,p=0.2)
+        # x = F.relu(x)
+        # x = self.l3(x)
+        # x = F.dropout(x,p=0.2)
+        # x = F.relu(x)
+        x = F.relu(self.l1(x))
+        x = F.relu(self.l3(x))
+        x = F.relu(self.l4(x))
+        output = F.log_softmax(self.l5(x), dim=1)
 
         return output

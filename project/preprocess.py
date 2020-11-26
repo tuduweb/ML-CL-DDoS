@@ -1,14 +1,13 @@
 import os
 import pickle
-
+from sklearn.preprocessing import StandardScaler
 import numpy as np
 import pandas as pd
 import torch
 import torch.utils.data
-
-#斜杆一定要是/左斜杠
-TRAINDATA_DIR = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/train/'
-TESTDATA_PATH = './data/test/testing-X.pkl'
+from sklearn.preprocessing import MinMaxScaler
+TRAINDATA_DIR = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_train/'
+TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/testdata-36788.pkl'
 ATTACK_TYPES = {
     'snmp': 0,
     'portmap': 1,
@@ -32,7 +31,7 @@ class CompDataset(object):
         self.X = X
         self.Y = Y
 
-        self._data = [(x, y) for x, y in zip(X, Y)]
+        self._data = [(x, y) for x, y in zip(X, Y)]#zip:打包为元组的列表
 
     def __getitem__(self, idx):
         return self._data[idx]
@@ -41,8 +40,8 @@ class CompDataset(object):
         return len(self._data)
 
 
-def extract_features(data, has_label=True):
-
+def extract_features(data, has_label=True):  #提取特征
+     
     data['SimillarHTTP'] = 0.
     if has_label:
         return data.iloc[:, -80:-1]
@@ -63,24 +62,21 @@ class UserRoundData(object):
 
         print('Load User Data: ', os.path.basename(fpath))
         data = pd.read_csv(fpath, skipinitialspace=True, low_memory=False)
-
-        print(data) #has label
-        x = extract_features(data)  #提取
-
-        # for t in data.iloc[:, -1]:  # -1:label
-        #     print(t)
-        #     print(self.attack_types[t.split('_')[-1].replace('-', '').lower()]) #攻击种类
-
+        x = extract_features(data)
         y = np.array([
             self.attack_types[t.split('_')[-1].replace('-', '').lower()]
-            for t in data.iloc[:, -1]   #-1:label
-        ])#y中的数据为攻击种类的ID
-
+            for t in data.iloc[:, -1]
+        ])
 
         x = x.to_numpy().astype(np.float32)
         y = y.astype(np.longlong)
+
         x[x == np.inf] = 1.
         x[np.isnan(x)] = 0.
+        #standardScaler = StandardScaler()
+        #x = standardScaler.fit_transform(x)
+        scaler = MinMaxScaler( )
+        x = scaler.fit_transform(x)
         return (
             x,
             y,
@@ -103,7 +99,7 @@ class UserRoundData(object):
                 y,
             ))
 
-        self.n_users = len(_user_datasets)  #孤岛数量 slave
+        self.n_users = len(_user_datasets)
 
     def round_data(self, user_idx, n_round, n_round_samples=-1):
         """Generate data for user of user_idx at round n_round.
@@ -144,12 +140,30 @@ class UserRoundData(object):
         return train_loader
 
 
-def get_test_loader(batch_size=1000):
+def get_test_loader(batch_size=1000):#default size
     with open(TESTDATA_PATH, 'rb') as fin:
         data = pickle.load(fin)
+        #print(data)
+        #data['X'] = data['X'].astype(np.float32)
+        #standardScaler = StandardScaler()
+        #x = standardScaler.fit_transform(x)
+
+        x = data.iloc[:, -80:-1]
+        x['SimillarHTTP'] = 0.
+        #y = data.iloc[:, -1]
+
+        x = x.to_numpy().astype(np.float32)
+        #y = y.to_numpy().astype(np.longlong)
+
+        x[x == np.inf] = 1.
+        x[np.isnan(x)] = 0.
+
+        scaler = MinMaxScaler( )
+        x = scaler.fit_transform(x)
+
 
     test_loader = torch.utils.data.DataLoader(
-        data['X'],
+        x,
         batch_size=batch_size,
         shuffle=False,
     )
