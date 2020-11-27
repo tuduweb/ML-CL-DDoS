@@ -7,6 +7,7 @@ import torch
 
 from aggretator import aggregate_grads
 
+import globalvar as gl
 
 def random_str(n):
     return hex(int.from_bytes(os.urandom(n), byteorder='big'))[2:]
@@ -18,7 +19,7 @@ class ModelBase(ABC):
             setattr(self, k, kwargs[k])
 
     @abstractmethod
-    def update_grads(self):
+    def update_grads(self, grads):
         pass
 
     @abstractmethod
@@ -53,7 +54,7 @@ class PytorchModel(ModelBase):
         self.model_class = model_class
         self.init_model_path = init_model_path
         self.lr = lr
-        self.optim_name = optim_name
+        self.optim_name = optim_name #Adam
         self.cuda = cuda
 
         self._init_params()
@@ -70,15 +71,15 @@ class PytorchModel(ModelBase):
                                  self.optim_name)(self.model.parameters(),
                                                   lr=self.lr,weight_decay=0.01)
 
-    def update_grads(self, grads):
-        self.optimizer.zero_grad()
+    def update_grads(self, grads):# grads:联邦学习后的grads,基础版本是取平均值
+        self.optimizer.zero_grad() # 将模型的参数梯度初始化为0
 
-        if self.cuda:
-            self.model.to("cpu") #梯度更新过程需要放在CPU中进行 https://discuss.pytorch.org/t/runtimeerror-assigned-grad-has-data-of-a-different-type/95373
-        for k, v in self.model.named_parameters():
+        #if self.cuda:
+        #    self.model.to("cpu") #梯度更新过程需要放在CPU中进行 https://discuss.pytorch.org/t/runtimeerror-assigned-grad-has-data-of-a-different-type/95373
+        for k, v in self.model.named_parameters():#k = name, v = it(param)
             v.grad = grads[k].type(v.dtype)
 
-        self.optimizer.step()
+        self.optimizer.step() # 更新所有参数
 
     def update_params(self, params):
 
@@ -169,15 +170,17 @@ class Aggregator(object):
 
 class FederatedAveragingGrads(Aggregator):
     def __init__(self, model, framework=None):
-        self.framework = framework or getattr(model, 'framework')
+        # self.framework = framework or getattr(model, 'framework')
+        #
+        # if framework is None or framework == 'numpy':
+        #     backend = NumpyBackend
+        # elif framework == 'pytorch':
+        #     backend = PytorchBackend(torch=torch)
+        # else:
+        #     raise ValueError(
+        #         'Framework {} is not supported!'.format(framework))
 
-        if framework is None or framework == 'numpy':
-            backend = NumpyBackend
-        elif framework == 'pytorch':
-            backend = PytorchBackend(torch=torch)
-        else:
-            raise ValueError(
-                'Framework {} is not supported!'.format(framework))
+        backend = PytorchBackend(torch=torch, cuda=gl.get_value("use_cuda"))
 
         super().__init__(model, backend)
 
@@ -192,17 +195,24 @@ class FederatedAveragingGrads(Aggregator):
                         'named_grads': xxx,
                     }
         """
-        self.backend.update_grads(self.model,
+        # 更新模型梯度
+        self.backend.update_grads(self.model, # model = PytorchModel
                                   grads=aggregate_grads(grads=grads,
-                                                        backend=self.backend))
+                                                        backend=self.backend)) #单函数 返回gradients
 
-    def save_model(self, path):
+    def save_model(self, path = '', obj = None):
         return self.backend.save_model(self.model, path=path)
 
     def load_model(self, path, force_reload=False):
         return self.backend.load_model(self.model,
                                        path=path,
                                        force_reload=force_reload)
+
+    def save_model_obj(self, obj = None):
+        return obj
+
+    def load_model_obj(self, round):
+        return round
 
     def __call__(self, grads):
         """Aggregate grads.

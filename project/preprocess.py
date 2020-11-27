@@ -49,6 +49,8 @@ def extract_features(data, has_label=True):  #提取特征
     return data.iloc[:, -79:]
 
 
+
+
 class UserRoundData(object):
     def __init__(self):
         self.data_dir = TRAINDATA_DIR

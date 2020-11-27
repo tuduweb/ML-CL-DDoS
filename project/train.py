@@ -36,11 +36,12 @@ def user_round_train(X, Y, model, device, debug=False):
         prediction.extend(pred.reshape(-1).tolist())
         real.extend(target.reshape(-1).tolist())
 
-    grads = {'n_samples': data.shape[0], 'named_grads': {}}
-    for name, param in model.named_parameters():
+    grads = {'n_samples': data.shape[0], 'named_grads': {}} #数据数量
+    for name, param in model.named_parameters(): #给出网络层的名字和参数的迭代器
         #print(name)
         #print(param.grad)
-        grads['named_grads'][name] = param.grad.detach().cpu().numpy()  #cpu类型
+        #can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
+        grads['named_grads'][name] = param.grad.detach().cpu().numpy()  #cpu类型 #detach会产生一个gradient的copy但是做过剪枝处理，并没有连接任何算子。纯正用来拿数据的。
         #print(param.shape)
 
     if debug:
