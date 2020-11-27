@@ -197,7 +197,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                         user_idx=u,
                         n_round=r,
                         n_round_samples=self.n_round_samples)
-                    print(Counter(y))
+                    #print(Counter(y))
                     grads = user_round_train(X=x, Y=y, model=model, device=device)
                     # 参数服务器接受梯度.没有带节点信息.函数内以append方式接收
                     self.ps.receive_grads_info(grads=grads)
