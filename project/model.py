@@ -35,6 +35,7 @@ from train import user_round_train
 
 
 class ParameterServer(object):
+
     def __init__(self, init_model_path=None, testworkdir='', model_arg_obj=None, model_obj=None,learn_rate=0.001):
         self.round = 0
         self.rounds_info = {}
@@ -59,6 +60,9 @@ class ParameterServer(object):
         self.last_model_obj = None
 
         self.testworkdir = testworkdir
+        self.outputdir = ''
+        self.round_savemodel_int = gl.get_value("round_savemodel_int")
+
         if not os.path.exists(self.testworkdir):
             os.makedirs(self.testworkdir)
 
@@ -91,6 +95,11 @@ class ParameterServer(object):
     def receive_grads_info(self, grads):
         self.current_round_grads.append(grads)
 
+    def save_model(self):
+        path = os.path.join(self.outputdir,
+                            'round-{round}-model.pkl'.format(round=self.round))
+        info = self.aggr.save_model(path=path)  # ps.aggr.save_model
+
     # aggregate 总数; 合计;
     def aggregate(self):
         #联邦学习操作 输入的是一个list
@@ -99,14 +108,14 @@ class ParameterServer(object):
         if gl.get_value("is_local") == False:
             # 文件操作
             path = os.path.join(self.testworkdir,
-                                'round-{round}-model.md'.format(round=self.round))
+                                'round-{round}-model.pkl'.format(round=self.round))
             self.rounds_model_path[self.round] = path
             if (self.round - 1) in self.rounds_model_path:
                 if os.path.exists(self.rounds_model_path[self.round - 1]):
                     os.remove(self.rounds_model_path[self.round - 1])
 
             # 保存模型
-            info = self.aggr.save_model(path=path)
+            info = self.aggr.save_model(path=path) #ps.aggr.save_model
         else:
             #self.rounds_model_arg_objs[self.round] = self.aggr.model.model.state_dict() #PytorchModel 需要这个class下的model.state_dict()
             self.model_obj = self.aggr.model.model #直接把model赋值过去 注意要是cpu类型
@@ -114,6 +123,9 @@ class ParameterServer(object):
 
         self.round += 1
         self.current_round_grads = []
+
+        if (self.round % self.round_savemodel_int == 1):
+            self.save_model()
 
         return info
 
@@ -126,7 +138,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
     def setUp(self):
         if gl.get_value("use_cuda"):
-            self.TEST_BASE_DIR = 'C:/tmp/'
+            #self.TEST_BASE_DIR = 'C:/tmp/'
             print("Hello User: using cuda~")
             self.use_cuda = True
         else:
@@ -134,20 +146,29 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         self.seed = 0
         #self.use_cuda = True
-        self.batch_size = 64#没用
-        self.test_batch_size = 1000
-        self.lr = 0.0001 #学习率,上传的程序没有修改成功
+        self.batch_size = 1024#没用
+        self.test_batch_size = 4096
+        self.lr = 0.001 #学习率,上传的程序没有修改成功
         self.n_max_rounds = 5200
         self.log_interval = 10
         self.n_round_samples = 1600 #随机抽取的样本数 #df:1600
         self.testbase = self.TEST_BASE_DIR
         self.testworkdir = os.path.join(self.testbase, 'competetion-test')
-        self.testIntRound = 20
+        self.testIntRound = 100 #测试间隔
+        self.savemodel_interval = 100 #保存模型间隔
+
+        self.now_round = 0
+        self.outputdir = os.path.join(self.RESULT_DIR, str(gl.get_value('start_time')))
+
+        gl.set_value("round_savemodel_int", self.savemodel_interval)
 
         if not os.path.exists(self.testworkdir):
             os.makedirs(self.testworkdir)
 
-        self.init_model_path = os.path.join(self.testworkdir, 'init_model.md')
+        if not os.path.exists(self.outputdir):
+            os.makedirs(self.outputdir)
+
+        self.init_model_path = os.path.join(self.testworkdir, 'init_model.pkl')
         torch.manual_seed(self.seed)
 
         # 如果没有初始化模型,那么执行:模型初始化
@@ -159,6 +180,8 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                                       model_obj=FLModel(), learn_rate=self.lr)
         else:
             self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir, learn_rate=self.lr)
+
+        self.ps.outputdir = self.outputdir
 
         if not os.path.exists(self.RESULT_DIR):
             os.makedirs(self.RESULT_DIR)
@@ -193,7 +216,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                         n_round=r,
                         n_round_samples=self.n_round_samples)
                     #print(Counter(y))
-                    grads = user_round_train(X=x, Y=y, model=model, device=device)
+                    grads = user_round_train(X=x, Y=y, model=model, device=device, batch_size= self.batch_size, debug=False)
                     # 参数服务器接受梯度.没有带节点信息.函数内以append方式接收
                     self.ps.receive_grads_info(grads=grads)
 
@@ -259,13 +282,13 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                         user_idx=u,
                         n_round=r,
                         n_round_samples=self.n_round_samples)
-                    grads = user_round_train(X=x, Y=y, model=model, device=device)
+                    grads = user_round_train(X=x, Y=y, model=model, device=device, batch_size= self.batch_size,  debug=False)
                     # 参数服务器接受梯度.没有带u信息
                     self.ps.receive_grads_info(grads=grads)
 
                 self.ps.aggregate()
                 print('\nRound {} cost: {}, total training cost: {}'.format(
-                    r,
+                    self.now_round,
                     datetime.now() - start,
                     datetime.now() - training_start,
                 ))
@@ -278,19 +301,25 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                     # 预测 无标签的数据,并保存到result.txt
                     self.save_testdata_prediction(model=model, device=device)#用的pkl数据
 
+
+        self.ps.save_model() # 保存当前轮数的模型
         if model is not None:
             self.save_testdata_prediction(model=model, device=device)
 
     def save_prediction(self, predition):
         if isinstance(predition, (np.ndarray, )):
             predition = predition.reshape(-1).tolist()
+        self.now_round += 1
 
-        with open(os.path.join(self.RESULT_DIR, 'result.txt'), 'w') as fout:
-            fout.writelines(os.linesep.join([str(n) for n in predition]))
+        saved_filename = '%d-%d.txt' % (gl.get_value('start_time'), self.now_round)
+        with open(os.path.join(self.outputdir, saved_filename), 'w') as fout:
+            #fout.writelines(os.linesep.join([str(n) for n in predition])) #根据系统类型添加换行符
+            fout.writelines("\n".join([str(n) for n in predition]))
+            fout.close()
 
     def save_testdata_prediction(self, model, device):
         # 测试的时候batch_size 因为没有学习过程 那么越大越好？
-        loader = get_test_loader(batch_size=1000)
+        loader = get_test_loader(batch_size=self.test_batch_size)#测试时候的batchsize
         prediction = []
         with torch.no_grad():
             for data in loader:
@@ -298,6 +327,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                 prediction.extend(pred.reshape(-1).tolist())
 
         self.save_prediction(prediction)
+
     # 使用随机的训练数据来测试当前模型准确率
     def predict(self, model, device, test_loader, prefix=""):
         model.eval()
@@ -337,9 +367,12 @@ def main():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
+import time
+
 if __name__ == '__main__':
     try:
         gl._init()
+        gl.set_value("start_time", int(time.time()))
         gl.set_value("program_args", global_args)
         gl.set_value("use_cuda", False if global_args.cuda == 0 else True)
         gl.set_value("is_local", False if global_args.local == 0 else True)

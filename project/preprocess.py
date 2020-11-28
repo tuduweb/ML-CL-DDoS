@@ -7,7 +7,7 @@ import torch
 import torch.utils.data
 from sklearn.preprocessing import MinMaxScaler
 TRAINDATA_DIR = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_train/'
-TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/testdata-36788.pkl'
+TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/1606549610-682356.pkl'
 ATTACK_TYPES = {
     'snmp': 0,
     'portmap': 1,
@@ -154,20 +154,20 @@ def get_test_loader(batch_size=1000):#default size
         #data['X'] = data['X'].astype(np.float32)
         #standardScaler = StandardScaler()
         #x = standardScaler.fit_transform(x)
+        data = data['X']
+        # x = data.iloc[:, -80:-1]
+        # x['SimillarHTTP'] = 0.
+        # #y = data.iloc[:, -1]
+        #
+        # x = x.to_numpy().astype(np.float32)
+        # #y = y.to_numpy().astype(np.longlong)
+        #
+        # x[x == np.inf] = 1.
+        # x[np.isnan(x)] = 0.
 
-        x = data.iloc[:, -80:-1]
-        x['SimillarHTTP'] = 0.
-        #y = data.iloc[:, -1]
-
-        x = x.to_numpy().astype(np.float32)
-        #y = y.to_numpy().astype(np.longlong)
-
-        x[x == np.inf] = 1.
-        x[np.isnan(x)] = 0.
-
-        x = pd.DataFrame(x)
+        x = pd.DataFrame(data)
         x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
-        x = x.to_numpy().astype(np.float32)
+        #x = x.to_numpy().astype(np.float32)
 
         scaler = MinMaxScaler( )
         x = scaler.fit_transform(x)
