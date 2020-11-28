@@ -1,17 +1,8 @@
-import argparse
+import unittest
+import paramunittest
+
 import globalvar as gl    #添加全局变量管理模块
 
-def test_for_sys(year, name, body):
-    print('the year is', year)
-    print('the name is', name)
-    print('the body is', body)
-
-parser = argparse.ArgumentParser(description='Test for argparse')
-parser.add_argument('--cuda', '-c', help='是否应用cuda', default=0)
-parser.add_argument('--local', '-l', help='是否在本地运行', default=0)
-parser.add_argument('--test', '-t', help='测试模型', default=0)
-#parser.add_argument('--body', '-b', help='body 属性，必要参数', required=False)
-global_args = parser.parse_args()
 
 import copy
 import pickle
@@ -34,10 +25,9 @@ from preprocess import get_test_loader
 from preprocess import UserRoundData
 from train import user_round_train
 
-
 class ParameterServer(object):
 
-    def __init__(self, init_model_path=None, testworkdir='', model_arg_obj=None, model_obj=None,learn_rate=0.001):
+    def __init__(self, init_model_path=None, testworkdir='', model_arg_obj=None, model_obj=None,learn_rate=0.001,output_model_dir = '', opt_schedule=None):
         self.round = 0
         self.rounds_info = {}
         self.rounds_model_path = {}
@@ -49,7 +39,8 @@ class ParameterServer(object):
                                init_model_path=self.init_model_path,
                                optim_name='Adam',
                                cuda=gl.get_value("use_cuda"),
-                               lr=learn_rate
+                               lr=learn_rate,
+                               opt_schedule=opt_schedule
                                ),
             framework='pytorch',
         )
@@ -61,7 +52,7 @@ class ParameterServer(object):
         self.last_model_obj = None
 
         self.testworkdir = testworkdir
-        self.outputdir = ''
+        self.outputdir = output_model_dir
         self.round_savemodel_int = gl.get_value("round_savemodel_int")
 
         if not os.path.exists(self.testworkdir):
@@ -130,14 +121,66 @@ class ParameterServer(object):
 
         return info
 
-from collections import Counter
 
-class FedAveragingGradsTestSuit(unittest.TestCase):
-    RESULT_DIR = 'result'
+user_datasets = None
+
+@paramunittest.parametrized(
+    {"max_rounds": 5000, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.005,
+     "opt_schedule_func": lambda opt: torch.optim.lr_scheduler.MultiStepLR(opt, [600, 2100], 0.2, -1)},
+
+    {"max_rounds": 3000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.001,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 4000, "n_round_samples": 2048, "batch_size": 1024, "init_lr": 0.001,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 6000, "n_round_samples": 2048, "batch_size": 2048, "init_lr": 0.001,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.002,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.004,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.006,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 3000, "n_round_samples": 4096, "batch_size": 512, "init_lr": 0.001,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 3000, "n_round_samples": 8192, "batch_size": 512, "init_lr": 0.001,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 1024, "init_lr": 0.001,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 2048, "init_lr": 0.001,
+     "opt_schedule_func": None},
+)
+
+class check_model(unittest.TestCase):
+    RESULT_DIR = 'result-autotest'
     N_VALIDATION = 10000
-    TEST_BASE_DIR = '/tmp/'
+    TEST_BASE_DIR = 'tmp-autotest'
+
+    def setParameters(self, max_rounds, n_round_samples, batch_size, init_lr, opt_schedule_func):
+        self.n_max_rounds = max_rounds
+        self.n_round_samples = n_round_samples
+        self.batch_size = batch_size
+        self.lr = init_lr
+        self.opt_schedule_func = opt_schedule_func
+
+
+
 
     def setUp(self):
+
+        #设置开始时间
+        gl.set_value("start_time", int(time.time()))
+
+
+
         if gl.get_value("use_cuda"):
             #self.TEST_BASE_DIR = 'C:/tmp/'
             print("Hello User: using cuda~")
@@ -147,27 +190,62 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         self.seed = 0
         #self.use_cuda = True
-        self.batch_size = 256
+        #self.batch_size = 256
         self.test_batch_size = 8192
-        self.lr = 0.001 #学习率,上传的程序没有修改成功
-        self.n_max_rounds = 10000
-        self.log_interval = 10
-        self.n_round_samples = 1600 #随机抽取的样本数 #df:1600
+        #self.lr = 0.001 #学习率,上传的程序没有修改成功
+        #self.n_max_rounds = 0
+        #self.n_round_samples = 1600 #随机抽取的样本数 #df:1600
+
         self.testbase = self.TEST_BASE_DIR
-        self.testworkdir = os.path.join(self.testbase, 'competetion-test')
+        self.testworkdir = os.path.join(self.testbase, 'competetion-test', str(gl.get_value('start_time')))
         self.testIntRound = 100 #测试间隔
-        self.savemodel_interval = 100 #保存模型间隔
+        self.savemodel_interval = 50 #保存模型间隔
 
         self.now_round = 0
-        self.outputdir = os.path.join(self.RESULT_DIR, str(gl.get_value('start_time')))
+        self.outputdir = os.path.join(self.RESULT_DIR, str(gl.get_value('start_time'))) #result/time/
+        self.outputdir_model = os.path.join(self.outputdir, 'model')
+        self.outputdir_result = os.path.join(self.outputdir, 'result')
 
         gl.set_value("round_savemodel_int", self.savemodel_interval)
+
+        if not os.path.exists(self.RESULT_DIR):
+            os.makedirs(self.RESULT_DIR)
 
         if not os.path.exists(self.testworkdir):
             os.makedirs(self.testworkdir)
 
         if not os.path.exists(self.outputdir):
             os.makedirs(self.outputdir)
+
+        if not os.path.exists(self.outputdir_model):
+            os.makedirs(self.outputdir_model)
+        if not os.path.exists(self.outputdir_result):
+            os.makedirs(self.outputdir_result)
+
+        # 初始化参数保存
+        # self.n_max_rounds = max_rounds
+        # self.n_round_samples = n_round_samples
+        # self.batch_size = batch_size
+        # self.lr = init_lr
+        # self.opt_schedule_func = opt_schedule_func
+
+        save_txt = "max-round:%d\nn_round_samples:%d\nbatch_size:%d\nlr:%f\nis_opt:%d" % (self.n_max_rounds, self.n_round_samples, self.batch_size, self.lr, int(self.opt_schedule_func is not None))
+        with open(os.path.join(self.outputdir, "param.txt"), 'w') as fout:
+            fout.write(save_txt)
+            fout.close()
+        # if self.opt_schedule_func is not None:
+        #     with open(os.path.join(self.outputdir, "param-opt.pkl"), 'w')  as fout:
+        #         pickle.dump(self.opt_schedule_func, fout)
+        #         fout.close()
+
+        # 输出保存到文本 无效
+        # path = os.path.abspath(os.path.dirname(__file__))
+        # type = sys.getfilesystemencoding()
+        # sys.stdout = Logger(os.path.join(self.RESULT_DIR, "shell_log_" + str(gl.get_value('start_time')) + ".txt"))
+
+        print("@"*30)
+        print("@"*30)
+        print("Current ID:%d" % (gl.get_value('start_time')) )
 
         self.init_model_path = os.path.join(self.testworkdir, 'init_model.pkl')
         torch.manual_seed(self.seed)
@@ -178,16 +256,17 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         if gl.get_value("is_local"):
             self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir,
-                                      model_obj=FLModel(), learn_rate=self.lr)
+                                      model_obj=FLModel(), learn_rate=self.lr,
+                                      output_model_dir=self.outputdir_model,
+                                      opt_schedule=self.opt_schedule_func
+                                      )
         else:
-            self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir, learn_rate=self.lr)
+            self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir, learn_rate=self.lr,
+                                      output_model_dir=self.outputdir_model,
+                                      opt_schedule=self.opt_schedule_func
+                                      )
 
-        self.ps.outputdir = self.outputdir
-
-        if not os.path.exists(self.RESULT_DIR):
-            os.makedirs(self.RESULT_DIR)
-
-        self.urd = UserRoundData()
+        self.urd = user_datasets # 为了多参数自动测试 修改
         self.n_users = self.urd.n_users
 
     def _clear(self):
@@ -280,7 +359,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         self.now_round += 1
 
         saved_filename = '%d-%d.txt' % (gl.get_value('start_time'), self.now_round)
-        with open(os.path.join(self.outputdir, saved_filename), 'w') as fout:
+        with open(os.path.join(self.outputdir_result, saved_filename), 'w') as fout:
             #fout.writelines(os.linesep.join([str(n) for n in predition])) #根据系统类型添加换行符
             fout.writelines("\n".join([str(n) for n in predition]))
             fout.close()
@@ -326,130 +405,20 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
 
 
-from preprocess import CompDataset
-
-class LocalTestModelTestSuit(unittest.TestCase):
-    def setUp(self):
-        if gl.get_value("use_cuda"):
-            #self.TEST_BASE_DIR = 'C:/tmp/'
-            print("Hello Tester: using cuda~")
-            self.use_cuda = True
-        else:
-            self.use_cuda = False
-
-        self.test_model_path = gl.get_value("test_model_path")
-        self.test_batch_size = 4096
-        self.outputdir = 'result'
-
-
-        # if gl.get_value("is_local"):
-        #     self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir,
-        #                               model_obj=FLModel(), learn_rate=self.lr)
-        # else:
-        #self.ps = ParameterServer(init_model_path=self.test_model_path, testworkdir='', learn_rate=0.001)
-
-
-    def ModelLocalTest(self):
-        if os.path.exists(self.test_model_path) is None:
-            print('Test Model cant be found')
-            return
-
-        device = torch.device("cuda" if self.use_cuda else "cpu")
-        model = FLModel()
-        model.load_state_dict(torch.load(self.test_model_path))
-
-        model.to(device)
-
-        TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/1606549610-682356.pkl'
-
-        with open(TESTDATA_PATH, 'rb') as fin:
-            data = pickle.load(fin)
-            data['X'] = data['X']
-            data['X'] = pd.DataFrame(data['X'])
-            data['X'] = data['X'].drop(data['X'].columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
-
-
-            scaler = MinMaxScaler()
-            data['X'] = scaler.fit_transform(data['X'])
-
-        data = CompDataset(X=data['X'], Y=data['Y'])
-
-        test_loader = torch.utils.data.DataLoader(
-            data,
-            batch_size=self.test_batch_size,
-            shuffle=False,
-        )
-
-        model.eval()
-        prediction = []
-        real = []
-        correct = 0
-        test_loss = 0
-        with torch.no_grad():
-            for data, target in test_loader:
-                data, target = data.to(device), target.to(device)
-                output = model(data)
-                #pred = model(data.to(device)).argmax(dim=1, keepdim=True)
-                test_loss += F.nll_loss(
-                    output, target,
-                    reduction='sum').item()  # sum up batch loss
-                pred = output.argmax(
-                    dim=1,
-                    keepdim=True)  # get the index of the max log-probability
-                correct += pred.eq(target.view_as(pred)).sum().item()
-                prediction.extend(pred.reshape(-1).tolist())
-                real.extend(target.reshape(-1).tolist())
-
-        test_loss /= len(test_loader.dataset)
-        acc = 100. * correct / len(test_loader.dataset)
-
-        print(classification_report(real, prediction))
-        print(
-            '{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
-                "Validation", test_loss, correct, len(test_loader.dataset), acc), )
-        self.save_prediction(prediction)
-
-    def save_prediction(self, predition):
-        if isinstance(predition, (np.ndarray, )):
-            predition = predition.reshape(-1).tolist()
-
-        saved_filename = 'localmodel_%d.txt' % (gl.get_value('start_time') )
-        with open(os.path.join(self.outputdir, saved_filename), 'w') as fout:
-            #fout.writelines(os.linesep.join([str(n) for n in predition])) #根据系统类型添加换行符
-            fout.writelines("\n".join([str(n) for n in predition]))
-            fout.close()
-
-    # def save_testdata_prediction(self, model, device):
-    #     # 测试的时候batch_size 因为没有学习过程 那么越大越好？
-    #     loader = get_test_loader(batch_size=self.test_batch_size)#测试时候的batchsize
-    #     prediction = []
-    #     with torch.no_grad():
-    #         for data in loader:
-    #             pred = model(data.to(device)).argmax(dim=1, keepdim=True)
-    #             prediction.extend(pred.reshape(-1).tolist())
-    #
-    #     self.save_prediction(prediction)
-
-    def _clear(self):
-        #shutil.rmtree(self.testworkdir)
-        pass
-    def tearDown(self):
-        self._clear()
-
-
-
-
-
-
-
 def suite():
     suite = unittest.TestSuite()
-    if gl.get_value("test_model_path") is not None:
-        suite.addTest(LocalTestModelTestSuit('ModelLocalTest'))
-    else:
-        suite.addTest(FedAveragingGradsTestSuit('test_federated_averaging'))
+    suite.addTest(check_model('test_check'))
+
     return suite
 
+
+# def suite():
+#     suite = unittest.TestSuite()
+#     if gl.get_value("test_model_path") is not None:
+#         suite.addTest(LocalTestModelTestSuit('ModelLocalTest'))
+#     else:
+#         suite.addTest(FedAveragingGradsTestSuit('test_federated_averaging'))
+#     return suite
 
 def main():
     runner = unittest.TextTestRunner()
@@ -469,25 +438,28 @@ class Logger(object):
     pass
 
 
-if __name__ == '__main__':
 
+
+if __name__ == '__main__':
 
     try:
         gl._init()
-        gl.set_value("start_time", int(time.time()))
-        gl.set_value("program_args", global_args)
-        gl.set_value("use_cuda", False if global_args.cuda == 0 else True)
-        gl.set_value("is_local", False if global_args.local == 0 else True)
-        gl.set_value("test_model_path", None if global_args.test == 0 else global_args.test)
+        gl.set_value("use_cuda", True)
+        gl.set_value("is_local", True)
+        gl.set_value("test_model_path", None)
+        gl.set_value("init_time", int(time.time()))
+
+        #加载数据集
+        user_datasets = UserRoundData() #加载数据
+
     except Exception as e:
         print(e)
 
-    # 输出保存到文本
     path = os.path.abspath(os.path.dirname(__file__))
     type = sys.getfilesystemencoding()
 
-    if os.path.exists("./log/") == False:
-        os.makedirs("./log/")
-    sys.stdout = Logger("./log/%d.txt" % gl.get_value("start_time"))
+    if os.path.exists("./result-autotest/") == False:
+        os.makedirs("./result-autotest/")
+    sys.stdout = Logger("./result-autotest/%d.txt" % gl.get_value("init_time"))
 
-    main()
+    unittest.main()

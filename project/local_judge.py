@@ -76,7 +76,7 @@ class ResultTest(object):
 
 
 mytest = ResultTest()
-mytest.RunTestInDir('./result/1606568524/')
+mytest.RunTestInDir('./result/1606573415/')
 
 # fnames = ['5-1.bat', '10-3.bat' , '11-2.bat']
 # new = sorted(fnames, key=lambda i: int(re.match(r'\d+-(\d+).bat', i)[1]))

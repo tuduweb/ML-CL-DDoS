@@ -38,7 +38,8 @@ class PytorchModel(ModelBase):
                  init_model_path: str = '',
                  lr: float = 0.001,
                  optim_name: str = 'Adam',
-                 cuda: bool = False):
+                 cuda: bool = False,
+                 opt_schedule=None):
         """Pytorch 封装.
 
         参数：
@@ -56,6 +57,8 @@ class PytorchModel(ModelBase):
         self.lr = lr
         self.optim_name = optim_name #Adam
         self.cuda = cuda
+        self.scheduler = None
+        self.scheduler_func = opt_schedule
 
         self._init_params()
 
@@ -70,7 +73,9 @@ class PytorchModel(ModelBase):
         self.optimizer = getattr(self.torch.optim,
                                  self.optim_name)(self.model.parameters(),
                                                   lr=self.lr,weight_decay=0.01)
-        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, [600,2000], 0.1, -1)
+
+        if self.scheduler_func is not None:
+            self.scheduler = self.scheduler_func(self.optimizer)
 
 
 
@@ -83,8 +88,8 @@ class PytorchModel(ModelBase):
             v.grad = grads[k].type(v.dtype)
 
         self.optimizer.step() # 更新所有参数
-        self.scheduler.step()
-        #print(self.scheduler.get_lr()[0])
+        if self.scheduler is not None:
+            self.scheduler.step()
 
     def update_params(self, params):
 

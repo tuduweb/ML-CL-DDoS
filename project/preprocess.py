@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 import torch.utils.data
 from sklearn.preprocessing import MinMaxScaler
-TRAINDATA_DIR = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_train/'
+TRAINDATA_DIR = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/train/'
 TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/1606549610-682356.pkl'
 ATTACK_TYPES = {
     'snmp': 0,
