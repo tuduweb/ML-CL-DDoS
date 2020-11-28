@@ -18,6 +18,7 @@ import os
 import pickle
 import pandas as pd
 import numpy as np
+import re
 class ResultTest(object):
     def __init__(self):
         self.hello = 1
@@ -66,16 +67,19 @@ class ResultTest(object):
             return
 
         for root, dirs, fnames in os.walk(dir):
-            for fname in fnames:
-                if ".txt" in fname:
-                # each file is for each user
-                # user data can not be shared among users
-
-                # data = self._get_data(os.path.join(root, fname))
-                # if data is not None:
-                #     _user_datasets.append(data)
-                    self.RunTest(os.path.join(root, fname))
+            new_fnames = [d for d in fnames if '.txt' in d]
+            new_fnames = sorted(new_fnames, key=lambda i: int(re.match(r'\d+-(\d+).txt', i)[1]))
+            for fname in new_fnames:
+                #if ".txt" in fname:
+                self.RunTest(os.path.join(root, fname))
+                    #print(fname)
 
 
 mytest = ResultTest()
-mytest.RunTestInDir('./result/1606563242/')
+mytest.RunTestInDir('./result/1606568524/')
+
+# fnames = ['5-1.bat', '10-3.bat' , '11-2.bat']
+# new = sorted(fnames, key=lambda i: int(re.match(r'\d+-(\d+).bat', i)[1]))
+# print(new)
+#
+# print(re.match(r'(\d+)', fnames[0]))
