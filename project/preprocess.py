@@ -75,6 +75,11 @@ class UserRoundData(object):
 
         x[x == np.inf] = 1.
         x[np.isnan(x)] = 0.
+
+        x = pd.DataFrame(x)
+        x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
+        x = x.to_numpy().astype(np.float32)
+
         #standardScaler = StandardScaler()
         #x = standardScaler.fit_transform(x)
         scaler = MinMaxScaler( )
@@ -159,6 +164,10 @@ def get_test_loader(batch_size=1000):#default size
 
         x[x == np.inf] = 1.
         x[np.isnan(x)] = 0.
+
+        x = pd.DataFrame(x)
+        x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
+        x = x.to_numpy().astype(np.float32)
 
         scaler = MinMaxScaler( )
         x = scaler.fit_transform(x)
