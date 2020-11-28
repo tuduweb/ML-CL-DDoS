@@ -70,6 +70,9 @@ class PytorchModel(ModelBase):
         self.optimizer = getattr(self.torch.optim,
                                  self.optim_name)(self.model.parameters(),
                                                   lr=self.lr,weight_decay=0.01)
+        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, [600,2000], 0.1, -1)
+
+
 
     def update_grads(self, grads):# grads:联邦学习后的grads,基础版本是取平均值
         self.optimizer.zero_grad() # 将模型的参数梯度初始化为0
@@ -80,6 +83,8 @@ class PytorchModel(ModelBase):
             v.grad = grads[k].type(v.dtype)
 
         self.optimizer.step() # 更新所有参数
+        self.scheduler.step()
+        #print(self.scheduler.get_lr()[0])
 
     def update_params(self, params):
 
