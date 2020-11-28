@@ -9,12 +9,13 @@ def test_for_sys(year, name, body):
 parser = argparse.ArgumentParser(description='Test for argparse')
 parser.add_argument('--cuda', '-c', help='是否应用cuda', default=0)
 parser.add_argument('--local', '-l', help='是否在本地运行', default=0)
+parser.add_argument('--test', '-t', help='测试模型', default=0)
 #parser.add_argument('--body', '-b', help='body 属性，必要参数', required=False)
 global_args = parser.parse_args()
 
 import copy
-
-
+import pickle
+import pandas as pd
 
 from datetime import datetime
 import os
@@ -146,10 +147,10 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         self.seed = 0
         #self.use_cuda = True
-        self.batch_size = 1024#没用
-        self.test_batch_size = 4096
+        self.batch_size = 512
+        self.test_batch_size = 8192
         self.lr = 0.001 #学习率,上传的程序没有修改成功
-        self.n_max_rounds = 5200
+        self.n_max_rounds = 10000
         self.log_interval = 10
         self.n_round_samples = 1600 #随机抽取的样本数 #df:1600
         self.testbase = self.TEST_BASE_DIR
@@ -357,9 +358,128 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                 prefix, test_loss, correct, len(test_loader.dataset), acc), )
 
 
+
+from preprocess import CompDataset
+class LocalTestModelTestSuit(unittest.TestCase):
+    def setUp(self):
+        if gl.get_value("use_cuda"):
+            #self.TEST_BASE_DIR = 'C:/tmp/'
+            print("Hello Tester: using cuda~")
+            self.use_cuda = True
+        else:
+            self.use_cuda = False
+
+        self.test_model_path = gl.get_value("test_model_path")
+        self.test_batch_size = 4096
+        self.outputdir = 'result'
+
+
+        # if gl.get_value("is_local"):
+        #     self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir,
+        #                               model_obj=FLModel(), learn_rate=self.lr)
+        # else:
+        #self.ps = ParameterServer(init_model_path=self.test_model_path, testworkdir='', learn_rate=0.001)
+
+
+    def ModelLocalTest(self):
+        if os.path.exists(self.test_model_path) is None:
+            print('Test Model cant be found')
+            return
+
+        device = torch.device("cuda" if self.use_cuda else "cpu")
+        model = FLModel()
+        model.load_state_dict(torch.load(self.test_model_path))
+
+        model.to(device)
+
+        TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/1606549610-682356.pkl'
+
+        with open(TESTDATA_PATH, 'rb') as fin:
+            data = pickle.load(fin)
+            data['X'] = data['X']
+            data['X'] = pd.DataFrame(data['X'])
+            data['X'] = data['X'].drop(data['X'].columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
+
+
+            scaler = MinMaxScaler()
+            data['X'] = scaler.fit_transform(data['X'])
+
+        data = CompDataset(X=data['X'], Y=data['Y'])
+
+        test_loader = torch.utils.data.DataLoader(
+            data,
+            batch_size=self.test_batch_size,
+            shuffle=False,
+        )
+
+        model.eval()
+        prediction = []
+        real = []
+        correct = 0
+        test_loss = 0
+        with torch.no_grad():
+            for data, target in test_loader:
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                #pred = model(data.to(device)).argmax(dim=1, keepdim=True)
+                test_loss += F.nll_loss(
+                    output, target,
+                    reduction='sum').item()  # sum up batch loss
+                pred = output.argmax(
+                    dim=1,
+                    keepdim=True)  # get the index of the max log-probability
+                correct += pred.eq(target.view_as(pred)).sum().item()
+                prediction.extend(pred.reshape(-1).tolist())
+                real.extend(target.reshape(-1).tolist())
+
+        test_loss /= len(test_loader.dataset)
+        acc = 100. * correct / len(test_loader.dataset)
+
+        print(classification_report(real, prediction))
+        print(
+            '{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+                "Validation", test_loss, correct, len(test_loader.dataset), acc), )
+        self.save_prediction(prediction)
+
+    def save_prediction(self, predition):
+        if isinstance(predition, (np.ndarray, )):
+            predition = predition.reshape(-1).tolist()
+
+        saved_filename = 'localmodel_%d.txt' % (gl.get_value('start_time') )
+        with open(os.path.join(self.outputdir, saved_filename), 'w') as fout:
+            #fout.writelines(os.linesep.join([str(n) for n in predition])) #根据系统类型添加换行符
+            fout.writelines("\n".join([str(n) for n in predition]))
+            fout.close()
+
+    # def save_testdata_prediction(self, model, device):
+    #     # 测试的时候batch_size 因为没有学习过程 那么越大越好？
+    #     loader = get_test_loader(batch_size=self.test_batch_size)#测试时候的batchsize
+    #     prediction = []
+    #     with torch.no_grad():
+    #         for data in loader:
+    #             pred = model(data.to(device)).argmax(dim=1, keepdim=True)
+    #             prediction.extend(pred.reshape(-1).tolist())
+    #
+    #     self.save_prediction(prediction)
+
+    def _clear(self):
+        #shutil.rmtree(self.testworkdir)
+        pass
+    def tearDown(self):
+        self._clear()
+
+
+
+
+
+
+
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(FedAveragingGradsTestSuit('test_federated_averaging'))
+    if gl.get_value("test_model_path") is not None:
+        suite.addTest(LocalTestModelTestSuit('ModelLocalTest'))
+    else:
+        suite.addTest(FedAveragingGradsTestSuit('test_federated_averaging'))
     return suite
 
 
@@ -369,14 +489,37 @@ def main():
 
 import time
 
+import sys
+class Logger(object):
+  def __init__(self, filename="Default.log"):
+    self.terminal = sys.stdout
+    self.log = open(filename, "a")
+  def write(self, message):
+    self.terminal.write(message)
+    self.log.write(message)
+  def flush(self):
+    pass
+
+
 if __name__ == '__main__':
+
+
     try:
         gl._init()
         gl.set_value("start_time", int(time.time()))
         gl.set_value("program_args", global_args)
         gl.set_value("use_cuda", False if global_args.cuda == 0 else True)
         gl.set_value("is_local", False if global_args.local == 0 else True)
-
+        gl.set_value("test_model_path", None if global_args.test == 0 else global_args.test)
     except Exception as e:
         print(e)
+
+    # 输出保存到文本
+    path = os.path.abspath(os.path.dirname(__file__))
+    type = sys.getfilesystemencoding()
+
+    if os.path.exists("./log/") == False:
+        os.makedirs("./log/")
+    sys.stdout = Logger("./log/%d.txt" % gl.get_value("start_time"))
+
     main()
