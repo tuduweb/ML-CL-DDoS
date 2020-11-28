@@ -56,8 +56,26 @@ class ResultTest(object):
                 correct+=1
             #print("%d %d" %(self.result[i], self.truth_data[i]))
 
+        print("="*20)
+        print("File " + resultFileName)
         print(correct / len(self.truth_data))
+
+    def RunTestInDir(self, dir):
+        if os.path.exists(dir) == False:
+            print("Directory Cant be found!")
+            return
+
+        for root, dirs, fnames in os.walk(dir):
+            for fname in fnames:
+                if ".txt" in fname:
+                # each file is for each user
+                # user data can not be shared among users
+
+                # data = self._get_data(os.path.join(root, fname))
+                # if data is not None:
+                #     _user_datasets.append(data)
+                    self.RunTest(os.path.join(root, fname))
 
 
 mytest = ResultTest()
-mytest.RunTest("./result/1606556752/1606556752-14.txt")
+mytest.RunTestInDir('./result/1606563242/')
