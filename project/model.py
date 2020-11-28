@@ -35,7 +35,7 @@ from train import user_round_train
 
 
 class ParameterServer(object):
-    def __init__(self, init_model_path = None, testworkdir = '', model_arg_obj = None, model_obj = None):
+    def __init__(self, init_model_path=None, testworkdir='', model_arg_obj=None, model_obj=None,learn_rate=0.001):
         self.round = 0
         self.rounds_info = {}
         self.rounds_model_path = {}
@@ -46,7 +46,8 @@ class ParameterServer(object):
                                model_class=FLModel,
                                init_model_path=self.init_model_path,
                                optim_name='Adam',
-                               cuda=gl.get_value("use_cuda")
+                               cuda=gl.get_value("use_cuda"),
+                               lr=learn_rate
                                ),
             framework='pytorch',
         )
@@ -133,9 +134,9 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         self.seed = 0
         #self.use_cuda = True
-        self.batch_size = 64
+        self.batch_size = 64#没用
         self.test_batch_size = 1000
-        self.lr = 0.1
+        self.lr = 0.0001 #学习率,上传的程序没有修改成功
         self.n_max_rounds = 5200
         self.log_interval = 10
         self.n_round_samples = 1600 #随机抽取的样本数 #df:1600
@@ -154,16 +155,10 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
             torch.save(FLModel().state_dict(), self.init_model_path) # model.state_dict()其实返回的是一个OrderDict，存储了网络结构的名字和对应的参数
 
         if gl.get_value("is_local"):
-            self.ps = ParameterServer(
-                                      init_model_path=self.init_model_path,
-                                      testworkdir=self.testworkdir,
-                                      #model_arg_obj=FLModel().state_dict()
-                                      model_obj=FLModel()
-                                      )
+            self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir,
+                                      model_obj=FLModel(), learn_rate=self.lr)
         else:
-            self.ps = ParameterServer(init_model_path=self.init_model_path,
-                                  testworkdir=self.testworkdir
-                                  )
+            self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir, learn_rate=self.lr)
 
         if not os.path.exists(self.RESULT_DIR):
             os.makedirs(self.RESULT_DIR)
