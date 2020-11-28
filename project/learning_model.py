@@ -15,7 +15,7 @@ class FLModel(nn.Module):
         self.conv2 = nn.Conv1d(16, 16, 2)
         self.maxpool2 = nn.MaxPool1d(2)
         # self.Flatten = nn.Flatten()
-        self.l1 = nn.Linear(304, 512)
+        self.l1 = nn.Linear(240, 512)
         # self.dropout = nn.Dropout(0.5)
         # self.dropout = nn.Dropout(0.2)
         self.l3 = nn.Linear(512, 256)
