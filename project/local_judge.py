@@ -75,11 +75,57 @@ class ResultTest(object):
                     #print(fname)
 
 
-mytest = ResultTest()
-mytest.RunTestInDir('./result/1606573415/')
+# mytest = ResultTest()
+# mytest.RunTestInDir('./result-autotest/1606599656/result/')
 
 # fnames = ['5-1.bat', '10-3.bat' , '11-2.bat']
 # new = sorted(fnames, key=lambda i: int(re.match(r'\d+-(\d+).bat', i)[1]))
 # print(new)
 #
 # print(re.match(r'(\d+)', fnames[0]))
+
+import argparse
+import globalvar as gl
+
+parser = argparse.ArgumentParser(description='Test for argparse')
+parser.add_argument('--id', '-i', help='测试ID', required=True)
+parser.add_argument('--version', '-v', help='样例版本ID', default=2)
+#parser.add_argument('--body', '-b', help='body 属性，必要参数', required=False)
+global_args = parser.parse_args()
+
+if __name__ == '__main__':
+    id = 0
+    version = 0
+    try:
+        id = int(global_args.id)
+        version = int(global_args.version)
+    except Exception as e:
+        print(e)
+
+    if version == 1:
+        testPath = 'result'
+    else:
+        testPath = 'result-autotest'
+
+    testPath = os.path.join(testPath, str(id))
+    if os.path.exists(testPath) is False:
+        print("ID cant be found")
+    else:
+        if version == 1:
+            mytest = ResultTest()
+            mytest.RunTestInDir(testPath)
+        else:
+            param_file = os.path.join(testPath, 'param.txt')
+            param_info = ''
+            if os.path.exists(param_file):
+                with open(param_file, 'r') as fin:
+                    param_info = fin.read()
+                    print(param_info)
+                    fin.close()
+            testPath = os.path.join(testPath, 'result')
+            mytest = ResultTest()
+            mytest.RunTestInDir(testPath)
+            print("@"*20)
+            print(param_info)
+
+    print('LOCAL_JUDGE END')
