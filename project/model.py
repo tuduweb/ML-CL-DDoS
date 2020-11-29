@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser(description='Test for argparse')
 parser.add_argument('--cuda', '-c', help='是否应用cuda', default=0)
 parser.add_argument('--local', '-l', help='是否在本地运行', default=0)
 parser.add_argument('--test', '-t', help='测试模型', default=0)
+parser.add_argument('--model_test', '-mt', help='测试模型ID', default=0)
 #parser.add_argument('--body', '-b', help='body 属性，必要参数', required=False)
 global_args = parser.parse_args()
 
@@ -327,6 +328,8 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
 
 from preprocess import CompDataset
+import re
+
 
 class LocalTestModelTestSuit(unittest.TestCase):
     def setUp(self):
@@ -341,6 +344,8 @@ class LocalTestModelTestSuit(unittest.TestCase):
         self.test_batch_size = 4096
         self.outputdir = 'result'
 
+        self.test_models_path = None
+
 
         # if gl.get_value("is_local"):
         #     self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir,
@@ -350,15 +355,17 @@ class LocalTestModelTestSuit(unittest.TestCase):
 
 
     def ModelLocalTest(self):
-        if os.path.exists(self.test_model_path) is None:
+        if gl.get_value("test_model_path_id") is not None:
+            self.test_models_path = os.path.join('result-autotest', str(gl.get_value("test_model_path_id")), 'model')
+            if os.path.exists(self.test_models_path) is None:
+                print('Test Models path id err')
+                return
+
+        if self.test_model_path is not None and os.path.exists(self.test_model_path) is None:
             print('Test Model cant be found')
             return
 
         device = torch.device("cuda" if self.use_cuda else "cpu")
-        model = FLModel()
-        model.load_state_dict(torch.load(self.test_model_path))
-
-        model.to(device)
 
         TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/1606549610-682356.pkl'
 
@@ -379,35 +386,77 @@ class LocalTestModelTestSuit(unittest.TestCase):
             batch_size=self.test_batch_size,
             shuffle=False,
         )
+        #gl.set_value("test_model_path_id")
 
-        model.eval()
-        prediction = []
-        real = []
-        correct = 0
-        test_loss = 0
-        with torch.no_grad():
-            for data, target in test_loader:
-                data, target = data.to(device), target.to(device)
-                output = model(data)
-                #pred = model(data.to(device)).argmax(dim=1, keepdim=True)
-                test_loss += F.nll_loss(
-                    output, target,
-                    reduction='sum').item()  # sum up batch loss
-                pred = output.argmax(
-                    dim=1,
-                    keepdim=True)  # get the index of the max log-probability
-                correct += pred.eq(target.view_as(pred)).sum().item()
-                prediction.extend(pred.reshape(-1).tolist())
-                real.extend(target.reshape(-1).tolist())
+        model = FLModel()
 
-        test_loss /= len(test_loader.dataset)
-        acc = 100. * correct / len(test_loader.dataset)
+        if(self.test_model_path is not None):
+            model.load_state_dict(torch.load(self.test_model_path))
+            model.to(device)
+            model.eval()
+            prediction = []
+            real = []
+            correct = 0
+            test_loss = 0
+            with torch.no_grad():
+                for data, target in test_loader:
+                    data, target = data.to(device), target.to(device)
+                    output = model(data)
+                    #pred = model(data.to(device)).argmax(dim=1, keepdim=True)
+                    test_loss += F.nll_loss(
+                        output, target,
+                        reduction='sum').item()  # sum up batch loss
+                    pred = output.argmax(
+                        dim=1,
+                        keepdim=True)  # get the index of the max log-probability
+                    correct += pred.eq(target.view_as(pred)).sum().item()
+                    prediction.extend(pred.reshape(-1).tolist())
+                    real.extend(target.reshape(-1).tolist())
 
-        print(classification_report(real, prediction))
-        print(
-            '{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
-                "Validation", test_loss, correct, len(test_loader.dataset), acc), )
-        self.save_prediction(prediction)
+            test_loss /= len(test_loader.dataset)
+            acc = 100. * correct / len(test_loader.dataset)
+
+            print(classification_report(real, prediction))
+            print(
+                '{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+                    "Validation", test_loss, correct, len(test_loader.dataset), acc), )
+            #self.save_prediction(prediction)
+        else:
+            for root, dirs, fnames in os.walk(self.test_models_path):
+                new_fnames = [d for d in fnames if '.pkl' in d]
+                new_fnames = sorted(new_fnames, key=lambda i: int(re.match(r'round-(\d+)-model.pkl', i)[1]))
+                for fname in new_fnames:
+                    print('@'*20)
+                    print(fname)
+                    model.load_state_dict(torch.load(os.path.join(self.test_models_path, fname)))
+                    model.to(device)
+                    model.eval()
+                    prediction = []
+                    real = []
+                    correct = 0
+                    test_loss = 0
+                    with torch.no_grad():
+                        for data, target in test_loader:
+                            data, target = data.to(device), target.to(device)
+                            output = model(data)
+                            # pred = model(data.to(device)).argmax(dim=1, keepdim=True)
+                            test_loss += F.nll_loss(
+                                output, target,
+                                reduction='sum').item()  # sum up batch loss
+                            pred = output.argmax(
+                                dim=1,
+                                keepdim=True)  # get the index of the max log-probability
+                            correct += pred.eq(target.view_as(pred)).sum().item()
+                            prediction.extend(pred.reshape(-1).tolist())
+                            real.extend(target.reshape(-1).tolist())
+
+                    test_loss /= len(test_loader.dataset)
+                    acc = 100. * correct / len(test_loader.dataset)
+
+                    print(classification_report(real, prediction))
+                    print(
+                        '{} set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
+                            "Validation", test_loss, correct, len(test_loader.dataset), acc), )
 
     def save_prediction(self, predition):
         if isinstance(predition, (np.ndarray, )):
@@ -444,7 +493,7 @@ class LocalTestModelTestSuit(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    if gl.get_value("test_model_path") is not None:
+    if gl.get_value('test_model_path') is not None or gl.get_value('test_model_path_id') is not None:
         suite.addTest(LocalTestModelTestSuit('ModelLocalTest'))
     else:
         suite.addTest(FedAveragingGradsTestSuit('test_federated_averaging'))
@@ -479,6 +528,7 @@ if __name__ == '__main__':
         gl.set_value("use_cuda", False if global_args.cuda == 0 else True)
         gl.set_value("is_local", False if global_args.local == 0 else True)
         gl.set_value("test_model_path", None if global_args.test == 0 else global_args.test)
+        gl.set_value("test_model_path_id", None if global_args.model_test == 0 else int(global_args.model_test))
     except Exception as e:
         print(e)
 
@@ -486,8 +536,9 @@ if __name__ == '__main__':
     path = os.path.abspath(os.path.dirname(__file__))
     type = sys.getfilesystemencoding()
 
-    if os.path.exists("./log/") == False:
-        os.makedirs("./log/")
-    sys.stdout = Logger("./log/%d.txt" % gl.get_value("start_time"))
+    if gl.get_value('test_model_path') is None or gl.get_value('test_model_path_id') is None:
+        if os.path.exists("./log/") == False:
+            os.makedirs("./log/")
+        sys.stdout = Logger("./log/%d.txt" % gl.get_value("start_time"))
 
     main()
