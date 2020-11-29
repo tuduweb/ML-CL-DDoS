@@ -125,38 +125,45 @@ class ParameterServer(object):
 user_datasets = None
 
 @paramunittest.parametrized(
-    {"max_rounds": 5000, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.005,
-     "opt_schedule_func": lambda opt: torch.optim.lr_scheduler.MultiStepLR(opt, [600, 2100], 0.2, -1)},
-
-    {"max_rounds": 3000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.001,
+    {"max_rounds": 2500, "n_round_samples": 3200, "batch_size": 320, "init_lr": 0.0025,
      "opt_schedule_func": None},
 
-    {"max_rounds": 4000, "n_round_samples": 2048, "batch_size": 1024, "init_lr": 0.001,
+    {"max_rounds": 2500, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.003,
      "opt_schedule_func": None},
 
-    {"max_rounds": 6000, "n_round_samples": 2048, "batch_size": 2048, "init_lr": 0.001,
-     "opt_schedule_func": None},
+    # {"max_rounds": 5000, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.005,
+    #  "opt_schedule_func": lambda opt: torch.optim.lr_scheduler.MultiStepLR(opt, [600, 2100], 0.2, -1)},
 
-    {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.002,
-     "opt_schedule_func": None},
 
-    {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.004,
-     "opt_schedule_func": None},
-
-    {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.006,
-     "opt_schedule_func": None},
-
-    {"max_rounds": 3000, "n_round_samples": 4096, "batch_size": 512, "init_lr": 0.001,
-     "opt_schedule_func": None},
-
-    {"max_rounds": 3000, "n_round_samples": 8192, "batch_size": 512, "init_lr": 0.001,
-     "opt_schedule_func": None},
-
-    {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 1024, "init_lr": 0.001,
-     "opt_schedule_func": None},
-
-    {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 2048, "init_lr": 0.001,
-     "opt_schedule_func": None},
+    # {"max_rounds": 3000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 4000, "n_round_samples": 2048, "batch_size": 1024, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 6000, "n_round_samples": 2048, "batch_size": 2048, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.002,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.004,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.006,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 3000, "n_round_samples": 4096, "batch_size": 512, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 3000, "n_round_samples": 8192, "batch_size": 512, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 1024, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 2048, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
 )
 
 class check_model(unittest.TestCase):
@@ -229,9 +236,10 @@ class check_model(unittest.TestCase):
         # self.lr = init_lr
         # self.opt_schedule_func = opt_schedule_func
 
-        save_txt = "max-round:%d\nn_round_samples:%d\nbatch_size:%d\nlr:%f\nis_opt:%d" % (self.n_max_rounds, self.n_round_samples, self.batch_size, self.lr, int(self.opt_schedule_func is not None))
+        self.save_txt = "max-round:%d\nn_round_samples:%d\nbatch_size:%d\nlr:%f\nis_opt:%d" % (self.n_max_rounds, self.n_round_samples, self.batch_size, self.lr, int(self.opt_schedule_func is not None))
+        print(self.save_txt)
         with open(os.path.join(self.outputdir, "param.txt"), 'w') as fout:
-            fout.write(save_txt)
+            fout.write(self.save_txt)
             fout.close()
         # if self.opt_schedule_func is not None:
         #     with open(os.path.join(self.outputdir, "param-opt.pkl"), 'w')  as fout:
@@ -309,6 +317,7 @@ class check_model(unittest.TestCase):
                 ))
 
                 if model is not None and r % self.testIntRound == 0:
+                    print(self.save_txt)
                     self.predict(model,
                                  device,
                                  self.urd.uniform_random_loader(self.N_VALIDATION),
