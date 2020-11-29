@@ -367,7 +367,7 @@ class LocalTestModelTestSuit(unittest.TestCase):
 
         device = torch.device("cuda" if self.use_cuda else "cpu")
 
-        TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/1606549610-682356.pkl'
+        TESTDATA_PATH = '../../dataset/new_test/1606549610-682356.pkl'
 
         with open(TESTDATA_PATH, 'rb') as fin:
             data = pickle.load(fin)

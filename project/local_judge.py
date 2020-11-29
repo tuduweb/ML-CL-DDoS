@@ -24,7 +24,7 @@ class ResultTest(object):
         self.hello = 1
         self.result = []
 
-        TESTDATA_PATH = 'N:/dataset/media_competetions_manual-uploaded-datasets_train.tar/media_competetions_manual-uploaded-datasets_train/new_test/1606549610-682356.pkl'
+        TESTDATA_PATH = '../../dataset/new_test/1606549610-682356.pkl'
 
 
         # 导入测试数据
