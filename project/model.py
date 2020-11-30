@@ -10,7 +10,8 @@ parser = argparse.ArgumentParser(description='Test for argparse')
 parser.add_argument('--cuda', '-c', help='是否应用cuda', default=0)
 parser.add_argument('--local', '-l', help='是否在本地运行', default=0)
 parser.add_argument('--test', '-t', help='测试模型', default=0)
-parser.add_argument('--model_test', '-mt', help='测试模型ID', default=0)
+parser.add_argument('--model_batch_test', '-bt', help='键入测试模型ID', default=0)
+parser.add_argument('--model_batch_save', '-bs', help='GPU模型转换为CPU', default=0)
 #parser.add_argument('--body', '-b', help='body 属性，必要参数', required=False)
 global_args = parser.parse_args()
 
@@ -367,7 +368,7 @@ class LocalTestModelTestSuit(unittest.TestCase):
 
         device = torch.device("cuda" if self.use_cuda else "cpu")
 
-        TESTDATA_PATH = '../../dataset/new_test/1606549610-682356.pkl'
+        TESTDATA_PATH = '../../dataset/new_test/1606711421-1156737.pkl'
 
         with open(TESTDATA_PATH, 'rb') as fin:
             data = pickle.load(fin)
@@ -392,6 +393,13 @@ class LocalTestModelTestSuit(unittest.TestCase):
 
         if(self.test_model_path is not None):
             model.load_state_dict(torch.load(self.test_model_path))
+
+            if gl.get_value('model_convert_to_gpu') is not None:
+                model.to(torch.device("cpu"))
+                portion = os.path.splitext(self.test_model_path)
+                new_model = portion[0] + '.cmodel'
+                torch.save(model.state_dict(), new_model)
+
             model.to(device)
             model.eval()
             prediction = []
@@ -429,6 +437,11 @@ class LocalTestModelTestSuit(unittest.TestCase):
                     print('@'*20)
                     print(fname)
                     model.load_state_dict(torch.load(os.path.join(self.test_models_path, fname)))
+                    if gl.get_value('model_convert_to_gpu') is not None:
+                        model.to(torch.device("cpu"))
+                        portion = os.path.splitext(fname)
+                        new_model = portion[0] + '.cmodel'
+                        torch.save(model.state_dict(), os.path.join(self.test_models_path, new_model))
                     model.to(device)
                     model.eval()
                     prediction = []
@@ -528,7 +541,8 @@ if __name__ == '__main__':
         gl.set_value("use_cuda", False if global_args.cuda == 0 else True)
         gl.set_value("is_local", False if global_args.local == 0 else True)
         gl.set_value("test_model_path", None if global_args.test == 0 else global_args.test)
-        gl.set_value("test_model_path_id", None if global_args.model_test == 0 else int(global_args.model_test))
+        gl.set_value("test_model_path_id", None if global_args.model_batch_test == 0 else int(global_args.model_batch_test))
+        gl.set_value("model_convert_to_gpu", None if global_args.model_batch_save == 0 else int(global_args.model_batch_save))
     except Exception as e:
         print(e)
 
