@@ -271,7 +271,6 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                     # 预测 无标签的数据,并保存到result.txt
                     self.save_testdata_prediction(model=model, device=device)#用的pkl数据
 
-
         self.ps.save_model() # 保存当前轮数的模型
         if model is not None:
             self.save_testdata_prediction(model=model, device=device)
@@ -330,7 +329,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
 from preprocess import CompDataset
 import re
-
+from preprocess import TESTDATA_PATH
 
 class LocalTestModelTestSuit(unittest.TestCase):
     def setUp(self):
@@ -367,8 +366,6 @@ class LocalTestModelTestSuit(unittest.TestCase):
             return
 
         device = torch.device("cuda" if self.use_cuda else "cpu")
-
-        TESTDATA_PATH = '../../dataset/new_test/1606711421-1156737.pkl'
 
         with open(TESTDATA_PATH, 'rb') as fin:
             data = pickle.load(fin)
