@@ -69,16 +69,17 @@ class UserRoundData(object):
             self.attack_types[t.split('_')[-1].replace('-', '').lower()]
             for t in data.iloc[:, -1]
         ])
+        x[x == np.inf] = 1.
+        x[np.isnan(x)] = 0.
+        # x = x.replace([np.inf, -np.inf], np.nan).dropna(axis=0)
+        x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
 
         x = x.to_numpy().astype(np.float32)
         y = y.astype(np.longlong)
 
-        x[x == np.inf] = 1.
-        x[np.isnan(x)] = 0.
 
-        x = pd.DataFrame(x)
-        x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
-        x = x.to_numpy().astype(np.float32)
+        # x = pd.DataFrame(x)
+        # x = x.to_numpy().astype(np.float32)
 
         #standardScaler = StandardScaler()
         #x = standardScaler.fit_transform(x)
