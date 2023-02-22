@@ -6,4 +6,4 @@ from torchsummary import summary
 model = FLModel().to('cpu')
 
 print(model)
-summary(model, input_size = [(63, 1)], batch_size=1)
+summary(model, input_size = [(1, 63)], batch_size=1)
