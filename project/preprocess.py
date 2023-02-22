@@ -6,8 +6,11 @@ import pandas as pd
 import torch
 import torch.utils.data
 from sklearn.preprocessing import MinMaxScaler
-TRAINDATA_DIR = '../../dataset/train/'
-TESTDATA_PATH = '../../dataset/new_test/1606549610-682356.pkl'
+import globalvar as gl
+import sys
+
+TRAINDATA_DIR = '../../../dataset/train/'
+TESTDATA_PATH = '../../../dataset/new_test/testdata-36788.pkl'
 ATTACK_TYPES = {
     'snmp': 0,
     'portmap': 1,
@@ -56,7 +59,17 @@ class UserRoundData(object):
         self.data_dir = TRAINDATA_DIR
         self._user_datasets = []
         self.attack_types = ATTACK_TYPES
+
+        if self._check_path("") < 0:
+            pass
         self._load_data()
+
+    def _check_path(self, path):
+        self._current_path = os.path.join(sys.path[0], TRAINDATA_DIR)
+        print("rundir: %s" % self._current_path)
+
+        return 0
+
 
     def _get_data(self, fpath):
         if not fpath.endswith('csv'):
@@ -83,7 +96,7 @@ class UserRoundData(object):
 
         #standardScaler = StandardScaler()
         #x = standardScaler.fit_transform(x)
-        scaler = MinMaxScaler( )
+        scaler = MinMaxScaler()
         x = scaler.fit_transform(x)
         return (
             x,
@@ -101,6 +114,12 @@ class UserRoundData(object):
                 if data is not None:
                     _user_datasets.append(data)
 
+                if len(_user_datasets):
+                    break
+
+            if len(_user_datasets):
+                break
+
         for x, y in _user_datasets:
             self._user_datasets.append((
                 x,
@@ -108,6 +127,13 @@ class UserRoundData(object):
             ))
 
         self.n_users = len(_user_datasets)
+
+    def __str__(self):
+        return "preprocess"
+        
+    def datasets(self):
+        return self._user_datasets
+
 
     def round_data(self, user_idx, n_round, n_round_samples=-1):
         """Generate data for user of user_idx at round n_round.
@@ -155,7 +181,7 @@ def get_test_loader(batch_size=1000):#default size
         #data['X'] = data['X'].astype(np.float32)
         #standardScaler = StandardScaler()
         #x = standardScaler.fit_transform(x)
-        data = data['X']
+        #data = data['X']
         # x = data.iloc[:, -80:-1]
         # x['SimillarHTTP'] = 0.
         # #y = data.iloc[:, -1]
@@ -170,8 +196,8 @@ def get_test_loader(batch_size=1000):#default size
         x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
         #x = x.to_numpy().astype(np.float32)
 
-        scaler = MinMaxScaler( )
-        x = scaler.fit_transform(x)
+        #scaler = MinMaxScaler( )
+        #x = scaler.fit_transform(x)
 
 
     test_loader = torch.utils.data.DataLoader(

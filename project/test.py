@@ -457,12 +457,20 @@ if __name__ == '__main__':
         gl.set_value("is_local", True)
         gl.set_value("test_model_path", None)
         gl.set_value("init_time", int(time.time()))
+        gl.set_value("datasetPath", "../../")
 
         #加载数据集
         user_datasets = UserRoundData() #加载数据
 
+        if len(user_datasets._user_datasets) == 0:
+            print("user dataset is empty")
+            exit(0)
+
+
     except Exception as e:
         print(e)
+
+
 
     path = os.path.abspath(os.path.dirname(__file__))
     type = sys.getfilesystemencoding()
