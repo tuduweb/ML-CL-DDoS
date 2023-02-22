@@ -23,9 +23,11 @@ class FLModel(nn.Module):
         self.l5 = nn.Linear(128, 14)
         # self.re = torch.reshape()
 
+    # normal: (batch_size, 3d-tensor)
+    # now: (batch_size, 1d-tensor) (320, 63)
     def forward(self, x):
-        # x = torch.reshape(x, (320, 1, 79, 1))
-        x = x.unsqueeze(1)
+        x = torch.reshape(x, (2, 1, 63))
+        # x = x.unsqueeze(1)
         # print(x.shape)
         x = F.relu(self.conv1(x))
         # print("卷积后..............")
@@ -49,5 +51,5 @@ class FLModel(nn.Module):
         x = F.relu(self.l3(x))
         x = F.relu(self.l4(x))
         output = F.log_softmax(self.l5(x), dim=1)
-
+        # output: (batchsize, classifyResult)
         return output
