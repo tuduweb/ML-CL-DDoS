@@ -8,6 +8,7 @@ def test_for_sys(year, name, body):
 
 parser = argparse.ArgumentParser(description='Test for argparse')
 parser.add_argument('--cuda', '-c', help='是否应用cuda', default=0)
+parser.add_argument('--onnx', '-o', help='onnx', default=0)
 parser.add_argument('--local', '-l', help='是否在本地运行', default=0)
 parser.add_argument('--test', '-t', help='测试模型', default=0)
 parser.add_argument('--model_batch_test', '-bt', help='键入测试模型ID', default=0)
@@ -497,8 +498,54 @@ class LocalTestModelTestSuit(unittest.TestCase):
 
 
 
+def initTorchModel():
+    torch_model = FLModel()
+
+    # state_dict = torch.load(f='result/tmp/competetion-test/1606581609/init_model.pkl', map_location=torch.device('cpu'))['state_dict']
+    #
+    # # Adapt the checkpoint
+    # for old_key in list(state_dict.keys()):
+    #     new_key = '.'.join(old_key.split('.')[1:])
+    #     state_dict[new_key] = state_dict.pop(old_key)
+
+    torch_model.load_state_dict(torch.load(f='result/tmp/competetion-test/1606581609/init_model.pkl', map_location=torch.device('cpu')))
+    torch_model.eval()
+
+    return torch_model
+
+    pass
+
+def outputOnnx():
+
+    model = initTorchModel()
+
+    x = torch.randn(1, 63)
+
+    with torch.no_grad():
+        torch.onnx.export(
+            model,
+            x,
+            "net.onnx",  # 导出onnx名
+            opset_version=11,  # 算子集版本
+            input_names=['input'],
+            output_names=['output'])
+    return
 
 
+def outputTorchScript():
+
+    # https://github.com/pnnx/pnnx
+
+    model = initTorchModel()
+    model = model.eval()
+    x = torch.rand(1, 63)
+
+    #mod = torch.jit.trace(model, x)
+    #mod.save("mlddos.pt")
+
+    summary(model.cpu(), (1, 63), batch_size=16)
+
+    pass
 
 
 def suite():
@@ -527,6 +574,7 @@ class Logger(object):
   def flush(self):
     pass
 
+from torchsummary import summary
 
 if __name__ == '__main__':
 
@@ -542,6 +590,12 @@ if __name__ == '__main__':
         gl.set_value("model_convert_to_gpu", None if global_args.model_batch_save == 0 else int(global_args.model_batch_save))
     except Exception as e:
         print(e)
+
+    if(global_args.onnx != 2):
+        #outputOnnx()
+        print("onnx onnx")
+        outputTorchScript()
+        exit(0)
 
     # 输出保存到文本
     path = os.path.abspath(os.path.dirname(__file__))

@@ -125,10 +125,7 @@ class ParameterServer(object):
 user_datasets = None
 
 @paramunittest.parametrized(
-    {"max_rounds": 2500, "n_round_samples": 3200, "batch_size": 320, "init_lr": 0.0025,
-     "opt_schedule_func": None},
-
-    {"max_rounds": 2500, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.003,
+    {"max_rounds": 2500, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.001,
      "opt_schedule_func": None},
 
     # {"max_rounds": 5000, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.005,
@@ -453,7 +450,7 @@ if __name__ == '__main__':
 
     try:
         gl._init()
-        gl.set_value("use_cuda", True)
+        gl.set_value("use_cuda", False)
         gl.set_value("is_local", True)
         gl.set_value("test_model_path", None)
         gl.set_value("init_time", int(time.time()))
