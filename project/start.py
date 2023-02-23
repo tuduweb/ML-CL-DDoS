@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
     # config
     gl.set_value("model_config", {
-        "batch_size": 2048,
+        "batch_size": 8192,
         "test_batch_size": 8192,
         "lr": 0.001,
         "n_max_rounds": 10000,

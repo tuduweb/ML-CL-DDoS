@@ -248,6 +248,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                     # 预测 无标签的数据,并保存到result.txt
                     self.save_testdata_prediction(model=model, device=device)  # 用的pkl数据
 
+                self.now_round += 1
 
         else:
 
@@ -281,6 +282,8 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                     # 预测 无标签的数据,并保存到result.txt
                     self.save_testdata_prediction(model=model, device=device)
 
+                self.now_round += 1
+
         self.ps.save_model() # 保存当前轮数的模型
         if model is not None:
             self.save_testdata_prediction(model=model, device=device)
@@ -306,8 +309,6 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
         if self.SAVE_PREDICTION_LABEL:
             self.save_prediction(prediction)
-
-        self.now_round += 1
 
     # 使用随机的训练数据来测试当前模型准确率
     def predict(self, model, device, test_loader, prefix=""):
