@@ -37,7 +37,8 @@ class CompDataset(object):
         self.X = X
         self.Y = Y
 
-        self._data = [(x, y) for x, y in zip(X, Y)]#zip:打包为元组的列表
+        # zip:打包为元组的列表
+        self._data = [(x, y) for x, y in zip(X, Y)]
 
     def __getitem__(self, idx):
         return self._data[idx]
@@ -59,7 +60,11 @@ def extract_features(data, has_label=True):  #提取特征
 
 class UserRoundData(object):
     def __init__(self):
-        self.data_dir = TRAINDATA_DIR
+        if gl.get_value("train_dataset_path"):
+            self.data_dir = os.path.abspath(os.path.join(gl.get_value("pwd"), gl.get_value("train_dataset_path")))
+        else:
+            self.data_dir = os.path.abspath(os.path.join(gl.get_value("pwd"), TRAINDATA_DIR))
+
         self._user_datasets = []
         self.attack_types = ATTACK_TYPES
 
@@ -68,7 +73,7 @@ class UserRoundData(object):
         self._load_data()
 
     def _check_path(self, path):
-        self._current_path = os.path.join(sys.path[0], TRAINDATA_DIR)
+        self._current_path = os.path.join(sys.path[0], path)
         print("rundir: %s" % self._current_path)
 
         return 0
@@ -88,6 +93,8 @@ class UserRoundData(object):
         x[x == np.inf] = 1.
         x[np.isnan(x)] = 0.
         # x = x.replace([np.inf, -np.inf], np.nan).dropna(axis=0)
+
+        # 去除数据集中无需要的列
         x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
 
         x = x.to_numpy().astype(np.float32)
@@ -124,6 +131,10 @@ class UserRoundData(object):
 
             if isSysTest and len(_user_datasets):
                 break
+
+        if len(_user_datasets) == 0:
+            print("datasets path [%s] emtpy" % self.data_dir)
+            exit(0)
 
         for x, y in _user_datasets:
             self._user_datasets.append((
@@ -180,7 +191,9 @@ class UserRoundData(object):
 
 import pandas
 def get_test_loader(batch_size=1000):#default size
-    with open(TESTDATA_PATH, 'rb') as fin:
+    testPath = gl.get_value("test_dataset_path", TESTDATA_PATH)
+
+    with open(testPath, 'rb') as fin:
         data =  pandas.read_pickle(fin)
         #print(data)
         if 'X' in data:

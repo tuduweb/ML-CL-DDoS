@@ -449,7 +449,7 @@ class Logger(object):
 if __name__ == '__main__':
 
     try:
-        gl._init()
+        gl.gl_init()
         gl.set_value("use_cuda", False)
         gl.set_value("is_local", True)
         gl.set_value("test_model_path", None)

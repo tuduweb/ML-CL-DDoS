@@ -18,7 +18,8 @@ def aggregate_grads(grads, backend):
     total_grads = {}
     n_total_samples = 0
     for gradinfo in grads:
-        n_samples = gradinfo['n_samples']#传入的数据数量
+        # 传入的数据数量
+        n_samples = gradinfo['n_samples']
         for k, v in gradinfo['named_grads'].items():
             if k not in total_grads:
                 total_grads[k] = []
@@ -28,6 +29,7 @@ def aggregate_grads(grads, backend):
 
     gradients = {}
     for k, v in total_grads.items():
-        gradients[k] = backend.sum(v, dim=0) / n_total_samples #计算出来的是在gpu上
+        # 计算出来的是在gpu上
+        gradients[k] = backend.sum(v, dim=0) / n_total_samples
 
     return gradients
