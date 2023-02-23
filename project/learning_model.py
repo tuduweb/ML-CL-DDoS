@@ -26,8 +26,8 @@ class FLModel(nn.Module):
     # normal: (batch_size, 3d-tensor)
     # now: (batch_size, 1d-tensor) (320, 63)
     def forward(self, x):
-        x = torch.reshape(x, (2, 1, 63))
-        # x = x.unsqueeze(1)
+        # x = torch.reshape(x, (2, 1, 63))
+        x = x.unsqueeze(1)
         # print(x.shape)
         x = F.relu(self.conv1(x))
         # print("卷积后..............")

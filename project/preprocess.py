@@ -10,7 +10,10 @@ import globalvar as gl
 import sys
 
 TRAINDATA_DIR = '../../../dataset/train/'
-TESTDATA_PATH = '../../../dataset/new_test/testdata-36788.pkl'
+TESTDATA_PATH = '../../../dataset/new_test/1606549610-682356.pkl'
+# TESTDATA_PATH = '../../../dataset/new_test/testdata-36788.pkl'
+# TESTDATA_PATH = '../../../dataset/new_test/153763.pkl'
+
 ATTACK_TYPES = {
     'snmp': 0,
     'portmap': 1,
@@ -173,12 +176,16 @@ class UserRoundData(object):
 
         return train_loader
 
-
+import pandas
 def get_test_loader(batch_size=1000):#default size
     with open(TESTDATA_PATH, 'rb') as fin:
-        data = pickle.load(fin)
+        data =  pandas.read_pickle(fin)
         #print(data)
-        #data['X'] = data['X'].astype(np.float32)
+        if 'X' in data:
+            data['X'] = data['X'].astype(np.float32)
+            x = pd.DataFrame(data['X'])
+        else:
+            x = pd.DataFrame(data)
         #standardScaler = StandardScaler()
         #x = standardScaler.fit_transform(x)
         #data = data['X']
@@ -192,12 +199,11 @@ def get_test_loader(batch_size=1000):#default size
         # x[x == np.inf] = 1.
         # x[np.isnan(x)] = 0.
 
-        x = pd.DataFrame(data)
+
         x = x.drop(x.columns[[28, 29, 30, 31, 41, 42, 43, 44, 48, 54, 55, 56, 57, 58, 59, 76]], axis=1)
         #x = x.to_numpy().astype(np.float32)
 
-        #scaler = MinMaxScaler( )
-        #x = scaler.fit_transform(x)
+        x = MinMaxScaler().fit_transform(x)
 
 
     test_loader = torch.utils.data.DataLoader(
