@@ -40,6 +40,7 @@ if __name__ == '__main__':
         gl.set_value("sys_test", global_args.sys_test) # 测试模式: 如, 只加载一个数据集等
         gl.set_value("mode", global_args.mode) # 运行模式
         # config
+
         gl.set_value("round_savemodel_int", 100)
 
         gl.set_value("dataset_path",
@@ -107,6 +108,17 @@ if __name__ == '__main__':
     ) # gl.get_value("init_time")
     writer = SummaryWriter(os.path.join(resultOutputPath, "logs"))  # 事件存放路径
     gl.set_value("tb_writer", writer) # None
+
+    # config
+    gl.set_value("model_config", {
+        "batch_size": 2048,
+        "test_batch_size": 8192,
+        "lr": 0.001,
+        "n_max_rounds": 10000,
+        "log_interval": 10,
+        "n_round_samples": 8192,  # 抽样去
+        "testInterRound": 100
+    })
 
     # other
     if gl.get_value("mode") == "normal":

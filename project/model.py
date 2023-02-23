@@ -27,6 +27,8 @@ import sys
 import time
 from utils.Logger import Logger
 
+class ModelConfig(object):
+    pass
 
 class ParameterServer(object):
 
@@ -141,14 +143,17 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         else:
             self.use_cuda = False
 
+        self.config = gl.get_value("model_config")
+        config = self.config
+
         self.seed = 0
         #self.use_cuda = True
-        self.batch_size = 256
-        self.test_batch_size = 8192
+        self.batch_size = config.batch_size
+        self.test_batch_size = config.test_bach_size
         self.lr = 0.001 #学习率,上传的程序没有修改成功
-        self.n_max_rounds = 10000
+        self.n_max_rounds = config.n_max_rounds
         self.log_interval = 10
-        self.n_round_samples = 1600 #随机抽取的样本数 #df:1600
+        self.n_round_samples = config.n_round_samples #随机抽取的样本数 #df:1600
         self.testbase = self.TEST_BASE_DIR
         self.testworkdir = os.path.join(self.testbase, 'competetion-test')
         self.testIntRound = 100 #测试间隔
