@@ -132,7 +132,7 @@ from collections import Counter
 class FedAveragingGradsTestSuit(unittest.TestCase):
     RESULT_DIR = 'result'
     N_VALIDATION = 10000
-    TEST_BASE_DIR = '/tmp/'
+    TEST_BASE_DIR = './tmp/'
     SAVE_PREDICTION_LABEL = False
 
     def setUp(self):
@@ -154,7 +154,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         self.n_max_rounds = config.n_max_rounds
         self.log_interval = 10
         self.n_round_samples = config.n_round_samples #随机抽取的样本数 #df:1600
-        self.testbase = self.TEST_BASE_DIR
+        self.testbase = os.path.join(gl.get_value("output_path"), self.TEST_BASE_DIR)
         self.testworkdir = os.path.join(self.testbase, 'competetion-test')
         self.testIntRound = 100 #测试间隔
         self.savemodel_interval = gl.get_value("round_savemodel_int", 100) #保存模型间隔
@@ -185,9 +185,6 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
             self.ps = ParameterServer(init_model_path=self.init_model_path, testworkdir=self.testworkdir, learn_rate=self.lr)
 
         self.ps.outputdir = self.outputdir
-
-        if not os.path.exists(self.RESULT_DIR):
-            os.makedirs(self.RESULT_DIR)
 
         self.urd = UserRoundData()
         self.n_users = self.urd.n_users
