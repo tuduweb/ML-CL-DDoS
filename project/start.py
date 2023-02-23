@@ -7,6 +7,7 @@ import time
 import sys
 import os
 from utils.Logger import Logger
+from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='bin Neural Network pytorch Arch')
 #parser.add_argument('tool')
@@ -94,14 +95,18 @@ if __name__ == '__main__':
         os.makedirs(savePath)
 
     resultOutputPath = os.path.join(savePath, outputGroupName)
-    if os.path.exists(
+    if not os.path.exists(
         resultOutputPath
     ):
         os.makedirs(resultOutputPath)
 
     gl.set_value("output_path", resultOutputPath)
 
-    sys.stdout = Logger(resultOutputPath + "./train_summary.log") # gl.get_value("init_time")
+    sys.stdout = Logger(
+        os.path.realpath(os.path.join(resultOutputPath, "./train_summary.log"))
+    ) # gl.get_value("init_time")
+    writer = SummaryWriter(os.path.join(resultOutputPath, "logs"))  # 事件存放路径
+    gl.set_value("tb_writer", writer) # None
 
     # other
     if gl.get_value("mode") == "normal":
@@ -111,3 +116,6 @@ if __name__ == '__main__':
     elif gl.get_value("mode") == "suite":
 
         unittest.main()
+
+    # TODO: catch exit
+    writer.close()

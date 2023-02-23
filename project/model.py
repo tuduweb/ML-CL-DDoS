@@ -57,6 +57,8 @@ class ParameterServer(object):
         self.outputdir = gl.get_value("output_path", "")
         self.round_savemodel_int = gl.get_value("round_savemodel_int")
 
+        self.tb_writer = gl.get_value("tb_writer")
+
         if not os.path.exists(self.testworkdir):
             os.makedirs(self.testworkdir)
 
@@ -151,6 +153,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         self.testworkdir = os.path.join(self.testbase, 'competetion-test')
         self.testIntRound = 100 #测试间隔
         self.savemodel_interval = gl.get_value("round_savemodel_int", 100) #保存模型间隔
+        self.tb_writer = gl.get_value("tb_writer")
 
         self.now_round = 0
         self.outputdir = os.path.join(gl.get_value("output_path",
@@ -231,6 +234,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                     # 预测 无标签的数据,并保存到result.txt
                     self.save_testdata_prediction(model=model, device=device)  # 用的pkl数据
 
+
         else:
 
             for r in range(1, self.n_max_rounds + 1):
@@ -261,8 +265,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                                  self.urd.uniform_random_loader(self.N_VALIDATION),
                                  prefix="Train")# 用的train数据
                     # 预测 无标签的数据,并保存到result.txt
-                    if self.SAVE_PREDICTION_LABEL:
-                        self.save_testdata_prediction(model=model, device=device)
+                    self.save_testdata_prediction(model=model, device=device)
 
         self.ps.save_model() # 保存当前轮数的模型
         if model is not None:
@@ -271,7 +274,6 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
     def save_prediction(self, predition):
         if isinstance(predition, (np.ndarray, )):
             predition = predition.reshape(-1).tolist()
-        self.now_round += 1
 
         saved_filename = 'predict-round%d.txt' % self.now_round
         with open(os.path.join(self.outputdir, saved_filename), 'w') as fout:
@@ -288,7 +290,10 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
                 pred = model(data.to(device)).argmax(dim=1, keepdim=True)
                 prediction.extend(pred.reshape(-1).tolist())
 
-        self.save_prediction(prediction)
+        if self.SAVE_PREDICTION_LABEL:
+            self.save_prediction(prediction)
+
+        self.now_round += 1
 
     # 使用随机的训练数据来测试当前模型准确率
     def predict(self, model, device, test_loader, prefix=""):
@@ -321,6 +326,9 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         self.savePredict('{} set: round-{} Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
                 self.now_round, prefix, test_loss, correct, len(test_loader.dataset), acc))
 
+        if self.tb_writer:
+            self.tb_writer.add_scalar('train/loss', test_loss, self.now_round)
+            self.tb_writer.add_scalar('train/acc', acc, self.now_round)
 
     def savePredict(self, strData):
         saved_filename = os.path.join(self.outputdir, 'predict.txt')
