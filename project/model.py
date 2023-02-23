@@ -332,7 +332,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
 
     def savePredict(self, strData):
         saved_filename = os.path.join(self.outputdir, 'predict.txt')
-        with open(os.path.join(self.outputdir, saved_filename), 'a') as fout:
+        with open(saved_filename, 'a') as fout:
             fout.write(strData)
             fout.close()
         pass
