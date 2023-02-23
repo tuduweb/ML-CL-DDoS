@@ -30,6 +30,18 @@ from utils.Logger import Logger
 class ModelConfig(object):
     pass
 
+class Dict2Obj(dict):
+
+    def __getattr__(self, key):
+        print('getattr is called')
+        if key not in self:
+            return None
+        else:
+            value = self[key]
+            if isinstance(value,dict):
+                value = Dict2Obj(value)
+            return value
+
 class ParameterServer(object):
 
     def __init__(self, init_model_path=None, testworkdir='', model_arg_obj=None, model_obj=None,learn_rate=0.001):
@@ -143,7 +155,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         else:
             self.use_cuda = False
 
-        self.config = gl.get_value("model_config")
+        self.config = Dict2Obj(gl.get_value("model_config"))
         config = self.config
 
         self.seed = 0
