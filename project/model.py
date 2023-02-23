@@ -161,7 +161,7 @@ class FedAveragingGradsTestSuit(unittest.TestCase):
         self.seed = 0
         #self.use_cuda = True
         self.batch_size = config.batch_size
-        self.test_batch_size = config.test_bach_size
+        self.test_batch_size = config.test_batch_size
         self.lr = 0.001 #学习率,上传的程序没有修改成功
         self.n_max_rounds = config.n_max_rounds
         self.log_interval = 10
