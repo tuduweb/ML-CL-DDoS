@@ -44,7 +44,11 @@ class Dict2Obj(dict):
 
 class ParameterServer(object):
 
-    def __init__(self, init_model_path=None, testworkdir='', model_arg_obj=None, model_obj=None,learn_rate=0.001):
+    def __init__(self,
+                 init_model_path=None, testworkdir='',
+                 model_arg_obj=None, model_obj=None,
+                 learn_rate=0.001, opt_schedule=None):
+
         self.round = 0
         self.rounds_info = {}
         self.rounds_model_path = {}
@@ -56,7 +60,8 @@ class ParameterServer(object):
                                init_model_path=self.init_model_path,
                                optim_name='Adam',
                                cuda=gl.get_value("use_cuda"),
-                               lr=learn_rate
+                               lr=learn_rate,
+                               opt_schedule=opt_schedule
                                ),
             framework='pytorch',
         )

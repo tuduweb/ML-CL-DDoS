@@ -8,6 +8,7 @@ import sys
 import os
 from utils.Logger import Logger
 from torch.utils.tensorboard import SummaryWriter
+import torch.optim.lr_scheduler
 
 parser = argparse.ArgumentParser(description='bin Neural Network pytorch Arch')
 #parser.add_argument('tool')
@@ -27,6 +28,99 @@ parser.add_argument('--sys_test', '-st', help='测试类别:如1为读取最小�
 parser.add_argument('--mode', '-m', help='模式', default="normal", type=str)
 
 global_args = parser.parse_args()
+
+
+
+import paramunittest
+@paramunittest.parametrized(
+    {"max_rounds": 100, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.001,
+     "opt_schedule_func": None},
+
+    {"max_rounds": 200, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.005,
+     "opt_schedule_func": lambda opt: torch.optim.lr_scheduler.MultiStepLR(opt, [600, 2100], 0.2, -1)},
+
+
+    # {"max_rounds": 3000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 4000, "n_round_samples": 2048, "batch_size": 1024, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 6000, "n_round_samples": 2048, "batch_size": 2048, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.002,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.004,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.006,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 3000, "n_round_samples": 4096, "batch_size": 512, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 3000, "n_round_samples": 8192, "batch_size": 512, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 1024, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+    #
+    # {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 2048, "init_lr": 0.001,
+    #  "opt_schedule_func": None},
+)
+
+class check_AutoTrainSuite(unittest.TestCase):
+    def setParameters(self, max_rounds, n_round_samples, batch_size, init_lr, opt_schedule_func):
+        self.n_max_rounds = max_rounds
+        self.n_round_samples = n_round_samples
+        self.batch_size = batch_size
+        self.lr = init_lr
+        self.opt_schedule_func = opt_schedule_func
+
+    def setUp(self):
+        gl.set_value("start_time", int(time.time()))
+        # start with param
+
+        savePath = os.path.join(gl.get_value("pwd"), "./result-autotest/")
+        outputGroupName = time.strftime("%Y%m%d-%H%M%S", gl.get_value("start_time"))
+
+        if not os.path.exists(savePath):
+            os.makedirs(savePath)
+
+        resultOutputPath = os.path.join(savePath, outputGroupName)
+        if not os.path.exists(
+                resultOutputPath
+        ):
+            os.makedirs(resultOutputPath)
+
+        gl.set_value("output_path", resultOutputPath)
+
+        sys.stdout = Logger(
+            os.path.realpath(os.path.join(resultOutputPath, "./train_summary.log"))
+        )  # gl.get_value("init_time")
+
+        if gl.get_value("tb_writer"):
+            gl.get_value("tb_writer").close()
+
+        writer = SummaryWriter(os.path.join(resultOutputPath, "logs"))  # 事件存放路径
+        gl.set_value("tb_writer", writer)  # None
+
+        gl.set_value("model_config", {
+            "batch_size": self.batch_size,
+            "test_batch_size": 8192 if self.batch_size < 8192 else self.batch_size,
+            "lr": self.lr,
+            "n_max_rounds": self.n_max_rounds,
+            "log_interval": 10,
+            # 抽样个数
+            "n_round_samples": self.n_round_samples,
+            # 测试集 测试轮数
+            "testInterRound": 100,
+            "opt_schedule_func": self.opt_schedule_func
+        })
+
+        model.main()
 
 if __name__ == '__main__':
     # 参数相关
@@ -87,10 +181,8 @@ if __name__ == '__main__':
         export.main()
         exit(0)
 
-    outputGroupName = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-    gl.get_value("default_output_path")
-
     savePath = os.path.join(gl.get_value("pwd"), "./result-autotest/")
+    outputGroupName = time.strftime("%Y%m%d-%H%M%S", time.localtime(gl.get_value("start_time")))
 
     if not os.path.exists(savePath):
         os.makedirs(savePath)
@@ -127,7 +219,7 @@ if __name__ == '__main__':
 
     elif gl.get_value("mode") == "suite":
 
-        unittest.main()
-
+        unittest.main(argv=[sys.argv[0]])
+        #main()
     # TODO: catch exit
     writer.close()
