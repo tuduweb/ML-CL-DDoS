@@ -107,6 +107,8 @@ class UserRoundData(object):
         )
 
     def _load_data(self):
+        isSysTest = gl.get_value("sys_test")
+
         _user_datasets = []
         self._user_datasets = []
         for root, dirs, fnames in os.walk(self.data_dir):
@@ -117,10 +119,10 @@ class UserRoundData(object):
                 if data is not None:
                     _user_datasets.append(data)
 
-                if len(_user_datasets):
+                if isSysTest and len(_user_datasets):
                     break
 
-            if len(_user_datasets):
+            if isSysTest and len(_user_datasets):
                 break
 
         for x, y in _user_datasets:

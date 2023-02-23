@@ -14,6 +14,10 @@ parser.add_argument('--test', '-t', help='测试模型', default=0)
 parser.add_argument('--model_batch_test', '-bt', help='键入测试模型ID', default=0)
 parser.add_argument('--model_batch_save', '-bs', help='GPU模型转换为CPU', default=0)
 #parser.add_argument('--body', '-b', help='body 属性，必要参数', required=False)
+
+parser.add_argument('--pkl_path', '-pkl', help='pkl点保存地址', default=0, type=str)
+parser.add_argument('--sys_test', '-st', help='测试类别:如1为读取最小的dataset...', default=0, type=int)
+
 global_args = parser.parse_args()
 
 import copy
@@ -508,7 +512,13 @@ def initTorchModel():
     #     new_key = '.'.join(old_key.split('.')[1:])
     #     state_dict[new_key] = state_dict.pop(old_key)
 
-    torch_model.load_state_dict(torch.load(f='result/tmp/competetion-test/1606581609/init_model.pkl', map_location=torch.device('cpu')))
+    model_pkl_path = gl.get_value("pkl_path")
+    if model_pkl_path:
+        pass
+    else:
+        model_pkl_path = 'result/tmp/competetion-test/1606581609/init_model.pkl'
+
+    torch_model.load_state_dict(torch.load(f=model_pkl_path, map_location=torch.device('cpu')))
     torch_model.eval()
 
     return torch_model
@@ -531,6 +541,12 @@ def outputOnnx():
             output_names=['output'])
     return
 
+def outputPt():
+    model = initTorchModel()
+    x = torch.randn(1, 63)
+    mod = torch.jit.trace(model, x)
+    mod.save("./model-%s.pt" % gl.get_value("start_time"))
+    pass
 
 def outputTorchScript():
 
@@ -588,13 +604,22 @@ if __name__ == '__main__':
         gl.set_value("test_model_path", None if global_args.test == 0 else global_args.test)
         gl.set_value("test_model_path_id", None if global_args.model_batch_test == 0 else int(global_args.model_batch_test))
         gl.set_value("model_convert_to_gpu", None if global_args.model_batch_save == 0 else int(global_args.model_batch_save))
+
+        gl.set_value("pkl_path", None if global_args.pkl_path == "" else global_args.pkl_path)
+        gl.set_value("sys_test", global_args.sys_test)
+
+
     except Exception as e:
         print(e)
 
-    if(global_args.onnx != 2):
+    if global_args.onnx == "1":
         #outputOnnx()
         print("onnx onnx")
         outputTorchScript()
+        exit(0)
+    elif global_args.onnx == "2":
+        print("pt pt")
+        outputPt()
         exit(0)
 
     # 输出保存到文本
