@@ -33,42 +33,11 @@ global_args = parser.parse_args()
 
 import paramunittest
 @paramunittest.parametrized(
-    {"max_rounds": 100, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.001,
+    {"max_rounds": 1000, "n_round_samples": 16000 * 2, "batch_size": 8192 * 2, "init_lr": 0.001,
      "opt_schedule_func": None},
 
-    {"max_rounds": 200, "n_round_samples": 1600, "batch_size": 320, "init_lr": 0.005,
+    {"max_rounds": 500, "n_round_samples": 16000 * 2, "batch_size": 8192 * 2, "init_lr": 0.005,
      "opt_schedule_func": lambda opt: torch.optim.lr_scheduler.MultiStepLR(opt, [600, 2100], 0.2, -1)},
-
-
-    # {"max_rounds": 3000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.001,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 4000, "n_round_samples": 2048, "batch_size": 1024, "init_lr": 0.001,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 6000, "n_round_samples": 2048, "batch_size": 2048, "init_lr": 0.001,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.002,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.004,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 2000, "n_round_samples": 2048, "batch_size": 512, "init_lr": 0.006,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 3000, "n_round_samples": 4096, "batch_size": 512, "init_lr": 0.001,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 3000, "n_round_samples": 8192, "batch_size": 512, "init_lr": 0.001,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 1024, "init_lr": 0.001,
-    #  "opt_schedule_func": None},
-    #
-    # {"max_rounds": 10000, "n_round_samples": 8192, "batch_size": 2048, "init_lr": 0.001,
-    #  "opt_schedule_func": None},
 )
 
 class check_AutoTrainSuite(unittest.TestCase):
@@ -84,7 +53,7 @@ class check_AutoTrainSuite(unittest.TestCase):
         # start with param
 
         savePath = os.path.join(gl.get_value("pwd"), "./result-autotest/")
-        outputGroupName = time.strftime("%Y%m%d-%H%M%S", gl.get_value("start_time"))
+        outputGroupName = time.strftime("%Y%m%d-%H%M%S", time.localtime(gl.get_value("start_time")))
 
         if not os.path.exists(savePath):
             os.makedirs(savePath)
@@ -120,6 +89,8 @@ class check_AutoTrainSuite(unittest.TestCase):
             "opt_schedule_func": self.opt_schedule_func
         })
 
+    # 真正执行测试的点 test*
+    def test_auto(self):
         model.main()
 
 if __name__ == '__main__':
